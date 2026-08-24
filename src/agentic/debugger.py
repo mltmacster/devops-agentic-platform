@@ -1,19 +1,68 @@
 """Debugger Agent — Traces errors and suggests fixes.
 
 Analyzes stack traces, error messages, or code snippets to identify
-the root cause and propose actionable fixes.
+the root cause and propose actionable fixes. Uses an LLM when
+DAP_LLM_API_KEY is configured; otherwise falls back to pattern matching.
 """
 
+import logging
+
+from .llm import LLMClient, LLMError, get_llm_client
 from .plugin_interface import BaseAgent
 from typing import Dict, Any
+
+logger = logging.getLogger(__name__)
 
 
 class DebuggerAgent(BaseAgent):
     """Debugger: Diagnoses errors and proposes fixes."""
 
+    SYSTEM_PROMPT = (
+        "You are the DAP Debugger agent. Analyze the user's error report "
+        "(stack trace, message, or description) and return ONLY a JSON object "
+        'with exactly these keys: {"error_type": string, "diagnosis": string, '
+        '"root_cause": string, "fix_suggestion": string, "example": string} '
+        "Rules: error_type is the canonical exception name if identifiable "
+        '(e.g. "TypeError", "KeyError", "ModuleNotFoundError"), otherwise a human '
+        'phrasing ("Key Error", "Runtime Error") or "Unknown Error". diagnosis is '
+        "one sentence on what is wrong; root_cause is one sentence on the "
+        "underlying cause; fix_suggestion is a concrete fix; example is a short "
+        'quoted "wrong vs fixed" code snippet.'
+    )
+
     @property
     def name(self) -> str:
         return "Debugger"
+
+    # ─── LLM path ─────────────────────────
+
+    async def execute_async(self, request_id: str, query: str) -> Dict[str, Any]:
+        """Execute with the LLM when configured; fall back to heuristics."""
+        llm = get_llm_client()
+        if llm.is_configured:
+            try:
+                return await self._execute_with_llm(llm, request_id, query)
+            except LLMError as exc:
+                logger.warning("LLM path failed (%s); using heuristics", exc)
+
+        result = self.execute(request_id, query)
+        result["engine"] = "heuristic"
+        return result
+
+    async def _execute_with_llm(self, llm: LLMClient, request_id: str, query: str) -> Dict[str, Any]:
+        data = await llm.complete_json(self.SYSTEM_PROMPT, query)
+        for key in ("error_type", "diagnosis", "root_cause", "fix_suggestion"):
+            value = data.get(key)
+            if not isinstance(value, str) or not value.strip():
+                raise LLMError(f"LLM result missing '{key}'")
+        return {
+            "error_type": data["error_type"],
+            "diagnosis": data["diagnosis"],
+            "root_cause": data["root_cause"],
+            "fix_suggestion": data["fix_suggestion"],
+            "example": str(data.get("example", "")),
+            "engine": "llm",
+        }
 
     # ─── Error classification rules ──────────────
 
@@ -104,10 +153,10 @@ class DebuggerAgent(BaseAgent):
         },
     }
 
-    # ─── Execute method ────────────────
+    # ─── Execute method (heuristic path) ───
 
     def execute(self, request_id: str, query: str) -> Dict[str, Any]:
-        """Diagnose the error and suggest a fix."""
+        """Diagnose the error and suggest a fix using pattern matching."""
 
         error_type = self._classify_error(query)
         diagnosis = self._diagnose(error_type, query)

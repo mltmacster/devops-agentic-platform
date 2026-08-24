@@ -130,7 +130,9 @@ def _get_process_info() -> dict:
     try:
         import psutil
         pids = len(psutil.pids())
-        threads = sum(proc.num_threads() for proc in psutil.process_iter())
+        # attrs= captures thread counts in one pass; a process that exits
+        # mid-iteration yields None instead of raising NoSuchProcess.
+        threads = sum(proc.info["num_threads"] or 0 for proc in psutil.process_iter(attrs=["num_threads"]))
         return {
             "processes": pids,
             "threads": threads,

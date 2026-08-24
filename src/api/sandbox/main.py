@@ -10,6 +10,9 @@ from pydantic import BaseModel
 from src.database import get_session
 from src.database.sandbox_repo import SandboxRepository
 
+# ─── Sandbox engine: lifecycle state machine ──────
+from src.sandbox_engine import SandboxState, can_transition, state_from_str
+
 # ─── Network imports for URL formatting ──────────────
 from src.network import NetworkConfig, build_ide_config_urls
 
@@ -64,6 +67,31 @@ async def get_session_dependency():
     """FastAPI dependency that yields a database session."""
     async with get_session() as session:
         yield session
+
+
+async def _validate_transition(
+    session, sandbox_id: str, target: SandboxState, action: str
+):
+    """Fetch the sandbox and guard the lifecycle transition.
+
+    Raises 404 when the sandbox doesn't exist and 409 when the state
+    machine rejects the transition. Returns the current sandbox record.
+    """
+    repo = SandboxRepository(session)
+    sandbox = await repo.get_by_id(sandbox_id)
+    if sandbox is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Sandbox '{sandbox_id}' not found.",
+        )
+
+    current = state_from_str(sandbox.state)
+    if current is None or not can_transition(current, target):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot {action} a sandbox in '{sandbox.state}' state.",
+        )
+    return sandbox
 
 
 # ─── Endpoints ────────────────────────────────
@@ -150,6 +178,25 @@ async def get_sandbox_status(
 
 
 @app.post(
+    "/sandboxes/{sandbox_id}/start",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Start a stopped/suspended/creating sandbox",
+)
+async def start_sandbox(
+    sandbox_id: str,
+    session=Depends(get_session_dependency),
+):
+    """Start a sandbox that is stopped, suspended, errored, or still creating.
+
+    In production, this would:
+      1. Boot the VM (Podman start) or restore its checkpoint
+      2. Transition state to 'running' in the database
+    """
+    await _validate_transition(session, sandbox_id, SandboxState.RUNNING, "start")
+    await SandboxRepository(session).update_state(sandbox_id, "running")
+
+
+@app.post(
     "/sandboxes/{sandbox_id}/stop",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Gracefully stop a running sandbox",
@@ -165,14 +212,8 @@ async def stop_sandbox(
       2. Wait up to 30s for graceful shutdown
       3. Transition state to 'stopped' in the database
     """
-    repo = SandboxRepository(session)
-
-    result = await repo.update_state(sandbox_id, "stopped")
-    if not result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sandbox '{sandbox_id}' not found.",
-        )
+    await _validate_transition(session, sandbox_id, SandboxState.STOPPED, "stop")
+    await SandboxRepository(session).update_state(sandbox_id, "stopped")
 
 
 @app.post(
@@ -191,14 +232,8 @@ async def suspend_sandbox(
       2. Pause the VM for later resume
       3. Transition state to 'suspended' in the database
     """
-    repo = SandboxRepository(session)
-
-    result = await repo.update_state(sandbox_id, "suspended")
-    if not result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sandbox '{sandbox_id}' not found.",
-        )
+    await _validate_transition(session, sandbox_id, SandboxState.SUSPENDED, "suspend")
+    await SandboxRepository(session).update_state(sandbox_id, "suspended")
 
 
 @app.post(
@@ -217,14 +252,8 @@ async def resume_sandbox(
       2. Start the sandbox process
       3. Transition state to 'running' in the database
     """
-    repo = SandboxRepository(session)
-
-    result = await repo.update_state(sandbox_id, "running")
-    if not result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sandbox '{sandbox_id}' not found.",
-        )
+    await _validate_transition(session, sandbox_id, SandboxState.RUNNING, "resume")
+    await SandboxRepository(session).update_state(sandbox_id, "running")
 
 
 @app.delete(
@@ -239,13 +268,13 @@ async def delete_sandbox(
     """Delete a stopped or suspended sandbox (permanently).
 
     In production, this would:
-      1. Verify the sandbox is in 'stopped' or 'suspended' state
+      1. Guard the transition (a deleted sandbox cannot be touched again)
       2. Destroy the VM and free resources
       3. Delete the sandbox record from PostgreSQL
     """
-    repo = SandboxRepository(session)
+    await _validate_transition(session, sandbox_id, SandboxState.DELETED, "delete")
 
-    success = await repo.delete(sandbox_id)
+    success = await SandboxRepository(session).delete(sandbox_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

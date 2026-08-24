@@ -60,7 +60,7 @@ async def run_agentic(request: RunRequest):
     from src.agentic.agent_orchestrator import get_orchestrator, AgentType
 
     orchestrator = get_orchestrator()
-    result = orchestrator.execute(
+    result = await orchestrator.execute_async(
         request_id=f"req-{uuid.uuid4().hex[:8]}",
         user_query=request.query,
     )
@@ -73,6 +73,20 @@ async def run_agentic(request: RunRequest):
         agent_type=agent_type,
         result=result["result"],
     )
+
+
+@app.get("/llm/status", status_code=status.HTTP_200_OK)
+async def llm_status():
+    """LLM backend status for the agentic engine."""
+    from src.agentic.llm import get_llm_client
+
+    client = get_llm_client()
+    return {
+        "configured": client.is_configured,
+        "engine": "llm" if client.is_configured else "heuristic",
+        "model": client.config.model,
+        "base_url": client.config.base_url,
+    }
 
 
 @app.get("/health/live", status_code=status.HTTP_200_OK)

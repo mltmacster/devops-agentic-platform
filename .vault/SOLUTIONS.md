@@ -476,3 +476,128 @@ imports in `__init__` are unchanged).
   CI is covered by the same fix.
 - Repo is now published at `https://github.com/mltmacster/devops-agentic-platform`; fix
   pushed to `main` — CI should be green.
+
+## Solution 23: `GET /api/workspace/workspaces` 405 — Dead `list_all()` Referencing Missing Column
+**Date**: 2026-08-24 (session: next-phase completion)
+
+**Problem**: `GET /api/workspace/workspaces` returned 405 (Method Not Allowed) — the list
+endpoint was missing, leaving the workspace API without a full CRUD surface. The repository
+method it needed, `WorkspaceRepository.list_all()`, already existed but was dead code:
+it referenced `Workspace.created_at`, a column the `Workspace` model does not have,
+so any call would have raised `AttributeError`.
+
+**Root cause**: The model gained `status`/`deleted_at` at some point but never
+`created_at`; `list_all()` was written against the intended schema and never executed,
+so the latent bug stayed hidden until the list endpoint was finally wired up.
+
+**Solution**:
+1. Added `created_at` (`DateTime(timezone=True)`, same pattern as `Sandbox.created_at`)
+to the `Workspace` model in `src/database/models.py`.
+2. Added `GET /workspaces` endpoint (registered before the `/{workspace_id}` route)
+with `limit` query param (1–200) returning `list[WorkspaceSummary]`, in
+`src/api/workspace/main.py`.
+3. Deterministic ordering: `ORDER BY created_at DESC, name DESC` in `list_all()` so
+timestamp ties cannot invert the newest-first contract.
+
+**Verification**:
+- 4 new API tests (empty list, newest-first ordering, limit, soft-delete exclusion)
+  in `tests/test_workspace_api.py` — all pass; suite 187/187.
+- Live: `GET /api/workspace/workspaces` → 200 with JSON array (was 405).
+
+## Solution 24: Sandbox Engine Unimportable — Hyphenated Package + No State Machine + Missing `/start`
+**Date**: 2026-08-24 (session: next-phase completion)
+
+**Problem**: `src/sandbox-engine/vm_manager.py` was dead code: the hyphenated directory
+name makes it unimportable as a Python package, nothing imported it, and the sandbox API
+applied DB state transitions unconditionally (no lifecycle validation). The API also had
+no `POST /sandboxes/{id}/start` endpoint, so a sandbox could never leave `creating` via
+the API — the vm_manager's `start_sandbox` existed only in the orphaned module.
+
+**Root cause**: The module was scaffolded for the intended package `src/sandbox_engine`
+but committed as `sandbox-engine` before the engine was ever wired in; the API
+developed its own (unvalidated) transitions instead.
+
+**Solution**:
+1. `git mv src/sandbox-engine src/sandbox_engine` + new `__init__.py` (exports
+`SandboxState`, `TRANSITIONS`, `can_transition`, `state_from_str`, manager, factory).
+2. Single lifecycle state machine in `vm_manager.py` (`TRANSITIONS` map +
+`can_transition`): `CREATING` is provisional (any target legal), `DELETED` is terminal,
+DELETE legal from every non-terminal state, self-transitions always illegal, plus an
+`ERROR` state (`error → running | deleted`). The in-memory manager's methods now route
+through one `_transition()` guard.
+3. Sandbox API (`src/api/sandbox/main.py`) reuses the engine's state machine via
+`_validate_transition()` → 404 unknown / 409 illegal, and the missing
+`POST /sandboxes/{id}/start` endpoint was added. DB remains the source of truth;
+the engine owns the rules, not a second copy of state.
+
+**Verification**:
+- New `tests/test_sandbox_engine.py` (27 tests: full transition matrix, manager flow,
+  stats) — pass.
+- 4 new lifecycle API tests in `tests/test_sandbox_api.py` (start, double-start 409,
+double-stop 409, post-delete 404); all 11 pre-existing sandbox tests unchanged and green.
+- Live: create → start(204) → status `running` → start-again(409) → stop(204) → delete(204).
+
+## Solution 25: Agentic Engine Heuristic-Only — Opt-In LLM Backend with Heuristic Fallback
+**Date**: 2026-08-24 (session: next-phase completion)
+
+**Problem**: All three agents (Code Architect, Debugger, Test Generator) were
+keyword/pattern heuristics — the platform's flagship capability ("agentic AI") never
+called a model.
+
+**Solution** (design constraint: CI and keyless local must behave exactly as before):
+1. New `src/agentic/llm.py` — `LLMClient` (async `httpx`, OpenAI-compatible
+`/chat/completions`, JSON mode, fence-tolerant parsing, `LLMError`) configured by
+env: `DAP_LLM_API_KEY` (required to enable), `DAP_LLM_BASE_URL` (any OpenAI-compatible
+endpoint: OpenAI/Azure/Ollama/vLLM/LiteLLM), `DAP_LLM_MODEL`, `DAP_LLM_TIMEOUT`,
+`DAP_LLM_MAX_TOKENS`. `get_llm_client()` rebuilds config per call so env changes apply.
+2. Each agent gained `async execute_async()`: LLM when `is_configured`, structured
+system prompt → JSON, per-agent validation of the result schema (bad LLM output raises
+`LLMError` → heuristic fallback), result tagged `"engine": "llm" | "heuristic"`.
+   Sync `execute()` remains the pure heuristic path, so all pre-existing tests are
+touched by the LLM feature only if a key is actually present.
+3. `AgenticAIOrchestrator.execute_async()` mirrors `execute()` routing on the async
+path; `POST /api/agentic/run` now awaits it; new `GET /api/agentic/llm/status`
+reports `{configured, engine, model, base_url}`.
+4. `.env.template` documents all five `DAP_LLM_*` vars + `TESTING`.
+
+**Verification**:
+- New `tests/test_llm.py` (22 tests): config parsing, mocked-HTTP success/error/fence/
+  shape/parse paths, per-agent LLM success + fallback + unconfigured, orchestrator,
+  `run_blocking` sync/async, `/llm/status`, `/run` engine field. No test needs a real key.
+- Suite 187/187 (no key in CI → heuristic path → zero behavior change for existing tests).
+- Live: `/api/agentic/llm/status` → `engine: heuristic` (no key set on this machine).
+
+## Solution 26: Flaky `test_export_metrics_is_deterministic` — psutil `NoSuchProcess` Race in `/metrics`
+**Date**: 2026-08-24 (session: next-phase completion)
+
+**Problem**: After the 187-test run, `test_export_metrics_is_deterministic` failed
+intermittently (1/3 runs) with a `psutil.NoSuchProcess` warning. The test itself is
+trivial (two GET /metrics calls must 200); the flake lived in the endpoint.
+
+**Root cause**: `_get_process_info()` did
+`sum(proc.num_threads() for proc in psutil.process_iter())` — `num_threads()`
+re-queries each process by PID, and a process that exits between iteration and the
+call raises `NoSuchProcess` → 500 → flaky test. More likely on a loaded machine
+(two live servers + pytest).
+
+**Solution**: Single-pass `psutil.process_iter(attrs=["num_threads"])` summing
+`proc.info["num_threads"] or 0` — the attr is captured during iteration, so a
+process that exits mid-scan contributes `None` instead of raising.
+
+**Verification**: Full suite run twice back-to-back — 187/187, 187/187; the
+previously flaky test passed both times.
+
+## Solution 27: No Virtualenv — Created `.venv`, Verified `requirements.txt` End-to-End
+**Date**: 2026-08-24 (session: next-phase completion)
+
+**Problem**: Everything ran on system Python 3.14.6; there was no reproducible project
+environment, so "it works on my machine" was the only guarantee.
+
+**Solution**: `python -m venv .venv` (Python 3.14.6) + `pip install -r requirements.txt`
+(`.venv/` is gitignored — the environment is disposable and recreatable).
+
+**Verification**:
+- Full suite inside the venv: **187/187 passed** (5s — clean env is faster).
+- Both live services restarted on the venv interpreter (`start_dap.py` with
+  `TESTING=1` on 8001, `dap_dashboard.py` on 8081) and live-verified — the venv is
+  the proven runner for local dev and preview.

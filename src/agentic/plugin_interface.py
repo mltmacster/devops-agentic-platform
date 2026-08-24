@@ -21,7 +21,7 @@ class BaseAgent(ABC):
 
     @abstractmethod
     def execute(self, request_id: str, query: str) -> Dict[str, Any]:
-        """Execute the agent's core workflow.
+        """Execute the agent's core workflow (heuristic path).
 
         Args:
             request_id: Unique ID for this request (for tracing).
@@ -30,6 +30,14 @@ class BaseAgent(ABC):
         Returns:
             Dict with agent-specific structured output.
         """
+
+    async def execute_async(self, request_id: str, query: str) -> Dict[str, Any]:
+        """Async execution path. Default is the heuristic `execute()`.
+
+        Agents with an LLM integration override this to use the LLM when
+        configured (see src/agentic/llm.py) and fall back to `execute()`.
+        """
+        return self.execute(request_id, query)
 
     def _format_result(self, result: Dict[str, Any]) -> str:
         """Format a result dict into human-readable text."""

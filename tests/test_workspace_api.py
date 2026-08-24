@@ -273,3 +273,77 @@ async def test_workspace_lifecycle_full():
     # 5. Verify it's gone
     not_found_resp = await client.get(f"/workspaces/{ws_id}")
     assert not_found_resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_list_workspaces_empty():
+    """GET /workspaces should return an empty list on a fresh DB."""
+    from src.database import init_db, drop_db
+
+    await drop_db()
+    await init_db()
+
+    client = await _create_client()
+    resp = await client.get("/workspaces")
+
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+@pytest.mark.asyncio
+async def test_list_workspaces_returns_created():
+    """GET /workspaces should return created workspaces, newest first."""
+    from src.database import init_db, drop_db
+
+    await drop_db()
+    await init_db()
+
+    client = await _create_client()
+
+    first = (await client.post("/workspaces", json={"name": "list-first"})).json()
+    second = (await client.post("/workspaces", json={"name": "list-second"})).json()
+
+    resp = await client.get("/workspaces")
+    assert resp.status_code == 200
+
+    data = resp.json()
+    assert len(data) == 2
+    assert {w["id"] for w in data} == {first["id"], second["id"]}
+    assert data[0]["name"] == "list-second"  # newest first
+    assert all("status" in w and "tier" in w for w in data)
+
+
+@pytest.mark.asyncio
+async def test_list_workspaces_limit():
+    """GET /workspaces?limit=N should cap the number of results."""
+    from src.database import init_db, drop_db
+
+    await drop_db()
+    await init_db()
+
+    client = await _create_client()
+    for i in range(3):
+        await client.post("/workspaces", json={"name": f"limit-ws-{i}"})
+
+    resp = await client.get("/workspaces?limit=2")
+    assert resp.status_code == 200
+    assert len(resp.json()) == 2
+
+
+@pytest.mark.asyncio
+async def test_list_workspaces_excludes_deleted():
+    """GET /workspaces should not return soft-deleted workspaces."""
+    from src.database import init_db, drop_db
+
+    await drop_db()
+    await init_db()
+
+    client = await _create_client()
+
+    keeper = (await client.post("/workspaces", json={"name": "kept"})).json()
+    doomed = (await client.post("/workspaces", json={"name": "doomed"})).json()
+    assert (await client.delete(f"/workspaces/{doomed['id']}")).status_code == 204
+
+    resp = await client.get("/workspaces")
+    assert resp.status_code == 200
+    assert [w["id"] for w in resp.json()] == [keeper["id"]]

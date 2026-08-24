@@ -39,12 +39,15 @@
 | Service | Files | Tests | Status | Last Updated |
 |---------|-------|-------|--------|-------------|
 | Auth | `src/api/auth/` (3 files) | 13 ✅ | Active | 2026-08-21 |
-| Workspace | `src/api/workspace/` (1 file) | 11 ✅ | Active | 2026-08-21 |
-| Sandbox | `src/api/sandbox/` (1 file) | 11 ⚠️ | Active | 2026-08-21 |
+| Workspace | `src/api/workspace/` (1 file) | **15 ✅** | Active | 2026-08-24 |
+| Sandbox | `src/api/sandbox/` (1 file) + state machine guard | **15 ✅** | Active | 2026-08-24 |
+| Sandbox Engine | `src/sandbox_engine/` (2 files; renamed from `sandbox-engine`) | **39 ✅** | Active | 2026-08-24 |
 | IDE Core (Phase 2) | `src/api/ide/` (1 file) | **11 ✅** | **Active** | 2026-08-21 |
-| Observability (Phase 2) | `src/api/observability/` (1 file; dead collector archived) | **30 ✅** | **Active** | 2026-08-23 |
-| Agentic AI (Phase 3) | `src/agentic/` (6 + common/ 2) + `src/api/agentic/` (1) | **24 ✅** | **Active** | 2026-08-23 |
+| Observability (Phase 2) | `src/api/observability/` (1 file; dead collector archived) | **28 ✅** | **Active** | 2026-08-24 |
+| Agentic AI (Phase 3) | `src/agentic/` (7 + common/ 2) + `src/api/agentic/` (1) | **46 ✅** (incl. 22 llm + 4 engine) | **Active** | 2026-08-24 |
 | Network (Phase 5) | `src/network/` (4 files) | **20 ✅** | **Active** | 2026-08-23 |
+
+> **Total: 187 tests** (was 118) — last verified 2026-08-24, `TESTING=1 .venv/Scripts/python.exe -m pytest tests/ -q`
 
 ## Phase 2 — IDE Integration & Observability (COMPLETE) ✅
 
@@ -79,9 +82,10 @@
 - `AgenticAIOrchestrator` — intent classification (debug → test → architect) + routing
 
 ### Agentic API (`src/api/agentic/`)
-- `POST /api/agentic/run` — {sandbox_id, query} → agent-routed result
+- `POST /api/agentic/run` — {sandbox_id, query} → agent-routed result (result tagged `engine: "llm" | "heuristic"`)
+- `GET /api/agentic/llm/status` — whether the LLM backend is configured (`DAP_LLM_API_KEY`)
 - `GET /api/agentic/health/live` / `ready`
-- Backends are currently heuristic/keyword-based; real LLM backend is a known TODO (see `HANDOFF.md`)
+- **LLM backend** (`src/agentic/llm.py`): opt-in via `DAP_LLM_API_KEY` env (async, non-blocking); unconfigured → pure heuristic fallback, so CI/keyless behavior is unchanged. Each agent has a `SYSTEM_PROMPT` and an `execute_async()` LLM path; the sync `execute()` remains the deterministic heuristic.
 
 ---
 
@@ -102,9 +106,9 @@
 2. **Observability** — ✅ Done: Prometheus metrics collection and Grafana Dashboard API  
 3. **Auth Persistence** — Still stubbed; needs real user storage (DB or identity provider)
 4. **RBAC Testing** — Need integration tests for actual role-based access
-5. **Agentic AI Engine** — ✅ Done (Phase 3); real LLM backend replaces heuristics (see `HANDOFF.md`)
+5. **Agentic AI Engine** — ✅ Done (Phase 3); real LLM backend (opt-in, `DAP_LLM_API_KEY`) with heuristic fallback (see `HANDOFF.md`)
 6. **Networkability** — ✅ Done (Phase 5); production would use NGINX/ALB + Let's Encrypt
-7. **Git repository** — ✅ Initialized 2026-08-23 (local `main`, no remote); add a GitHub remote to activate the CI workflow
+7. **Git repository** — ✅ Published 2026-08-23 at `https://github.com/mltmacster/devops-agentic-platform`; CI (3.12/3.13 matrix) active and green
 
 ## Future Considerations (Noted)
 

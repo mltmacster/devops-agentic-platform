@@ -66,6 +66,23 @@ class AgenticAIOrchestrator:
             "result": result,
         }
 
+    async def execute_async(self, request_id: str, user_query: str) -> Dict[str, Any]:
+        """Async execution path — uses the LLM when configured (see llm.py),
+        otherwise the same heuristic routing as `execute()`."""
+
+        agent_type = self._classify_intent(user_query)
+        logger.info("Intent classified: %s for '%s'", agent_type.name, user_query[:50])
+
+        agent = self._agents[agent_type]
+        result = await agent.execute_async(request_id, user_query)
+
+        return {
+            "request_id": request_id,
+            "status": "completed",
+            "agent_type": agent_type.name,
+            "result": result,
+        }
+
     def _classify_intent(self, query: str) -> AgentType:
         """Classify the user's request into an agent type."""
 

@@ -57,6 +57,19 @@
 - **Tests**: 118/118 passing (`TESTING=1 python -m pytest tests/ -q`)
 - **Snapshot Dir**: `.vault/snapshots/2026-08-23-health-audit/`
 
+### [2026-08-24 00:23] WORKSPACE+SANDBOX+AGENTIC | SNAPSHOT | Next-phase gap closure — workspace list, sandbox engine + state machine, LLM backend, venv
+- **Description**: Completed 5 user-approved items: (1) `GET /api/workspace/workspaces` list endpoint (root-cause fix: `Workspace.created_at` column + deterministic `list_all()` ordering); (2) sandbox package renamed `sandbox-engine` → `sandbox_engine` (was unimportable), `TRANSITIONS` state machine with 409/404 guards, new `POST /sandboxes/{id}/start`; (3) opt-in real LLM backend (`src/agentic/llm.py`, `DAP_LLM_API_KEY`) with heuristic fallback + `GET /api/agentic/llm/status`; (4) `.venv` (Python 3.14.6, all pinned deps) as canonical runner; (5) vault doc updates. Also fixed psutil race in observability `/metrics` (Solution 26). Details: SOLUTIONS.md Solutions 23–27.
+- **Files Changed**:
+  - `src/api/workspace/main.py` (list endpoint), `src/database/models.py` (`created_at`), `src/database/workspace_repo.py`
+  - `src/sandbox_engine/vm_manager.py` + `__init__.py` (renamed from `src/sandbox-engine/`), `src/api/sandbox/main.py`
+  - `src/agentic/llm.py` (new), `code_architect.py`, `debugger.py`, `test_generator.py`, `plugin_interface.py`, `agent_orchestrator.py`, `__init__.py`
+  - `src/api/agentic/main.py` (`/run` async, `/llm/status`), `src/api/observability/main.py` (psutil race fix)
+  - `tests/test_workspace_api.py` (+4), `tests/test_sandbox_api.py` (+4), `tests/test_llm.py` (new, 22), `tests/test_sandbox_engine.py` (new, 27)
+  - `.env.template` (new), `.gitignore`, `conftest.py`, `requirements.txt` (pre-change copies in snapshot dir)
+- **Author**: Claude Bionic
+- **Tests**: 187/187 passing (system python 3.14.6 ×2, venv ×1)
+- **Snapshot Dir**: `.vault/snapshots/2026-08-24-next-phase/`
+
 ### [2026-08-23 21:45] FRAMEWORK-AUDIT | SNAPSHOT | Full framework & codebase audit — dead import fix, dead module archival
 - **Description**: Complete audit of framework, modules, dependencies, databases, scripts, docs, and live server. Fixed the `AsyncQueuePool` dead import in the database layer (500s on all DB routes in production mode), archived 2 dead modules, aligned requirements pins, added missing `__init__.py` files, gitignored `dap_test.db`. Details: SOLUTIONS.md Solution 21.
 - **Files Changed**:
@@ -80,3 +93,4 @@
 | 2026-08-21 07:55 | ✅ Validated | 2026-08-21 | All 13 tests pass |
 | 2026-08-23 20:50 | ✅ Validated | 2026-08-23 | All 118 tests pass |
 | 2026-08-23 21:45 | ✅ Validated | 2026-08-23 | All 118 tests pass |
+| 2026-08-24 00:23 | ✅ Validated | 2026-08-24 | All 187 tests pass |

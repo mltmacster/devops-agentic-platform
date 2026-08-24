@@ -1,19 +1,85 @@
 """Code Architect Agent — Plans and scaffolds application code.
 
-Uses LLMs to analyze requirements, generate architecture decisions,
-and produce boilerplate project scaffolding.
+Analyzes requirements, generates architecture decisions, and produces
+boilerplate project scaffolding. Uses an LLM when DAP_LLM_API_KEY is
+configured; otherwise falls back to built-in scaffolding templates.
 """
 
+import logging
+
+from .llm import LLMClient, LLMError, get_llm_client
 from .plugin_interface import BaseAgent
 from typing import Dict, Any
+
+logger = logging.getLogger(__name__)
 
 
 class CodeArchitectAgent(BaseAgent):
     """Code Architect: Generates scaffolding plans and boilerplate from natural-language specs."""
 
+    SYSTEM_PROMPT = (
+        "You are the DAP Code Architect agent. From the user's project request, "
+        "produce scaffolding guidance. Return ONLY a JSON object with exactly "
+        'these keys: {"project_type": string, "tech_stack": array of strings, '
+        '"files": array of objects} Rules: project_type is one of "REST API", '
+        '"Web Application", "Mobile Application", "CLI Tool", "Microservice", '
+        '"Dashboard / Admin Panel", or "Application (unspecified)". tech_stack is '
+        '2-5 technology names. files is 3-10 objects of {"path": string, '
+        '"description": string} with absolute paths under /workspace/."'
+    )
+
     @property
     def name(self) -> str:
         return "Code Architect"
+
+    # ─── LLM path ─────────────────────────
+
+    async def execute_async(self, request_id: str, query: str) -> Dict[str, Any]:
+        """Execute with the LLM when configured; fall back to heuristics."""
+        llm = get_llm_client()
+        if llm.is_configured:
+            try:
+                return await self._execute_with_llm(llm, request_id, query)
+            except LLMError as exc:
+                logger.warning("LLM path failed (%s); using heuristics", exc)
+
+        result = self.execute(request_id, query)
+        result["engine"] = "heuristic"
+        return result
+
+    async def _execute_with_llm(self, llm: LLMClient, request_id: str, query: str) -> Dict[str, Any]:
+        data = await llm.complete_json(self.SYSTEM_PROMPT, query)
+
+        project_type = data.get("project_type")
+        if not isinstance(project_type, str) or not project_type.strip():
+            raise LLMError("LLM result missing 'project_type'")
+
+        tech_stack = [s for s in data.get("tech_stack", []) if isinstance(s, str) and s.strip()][:10]
+        if not tech_stack:
+            raise LLMError("LLM result has empty 'tech_stack'")
+
+        files = [
+            {"path": f["path"], "description": str(f.get("description", ""))}
+            for f in data.get("files", [])
+            if isinstance(f, dict) and isinstance(f.get("path"), str) and f["path"].strip()
+        ][:25]
+        if not files:
+            raise LLMError("LLM result has no 'files'")
+
+        return {
+            "plan": [
+                f"Analyzing requirements for a {project_type}",
+                f"Selecting technology stack: {', '.join(tech_stack)}",
+                f"Generating project scaffolding ({len(files)} files)",
+            ],
+            "project_type": project_type,
+            "tech_stack": tech_stack,
+            "files_created": [f["path"] for f in files],
+            "files": files,
+            "engine": "llm",
+        }
+
+    # ─── Execute method (heuristic path) ───
 
     def execute(self, request_id: str, query: str) -> Dict[str, Any]:
         """Generate scaffolding plan and boilerplate for the requested project."""

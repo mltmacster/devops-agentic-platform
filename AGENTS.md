@@ -54,7 +54,7 @@ devops-agentic-platform/
 │   ├── LIFECYCLE_PROTOCOL.md         # Artifact lifecycle rules
 │   ├── VAULT_OVERVIEW.md             # Current architecture state
 │   ├── SNAPSHOT_LOG.md               # All snapshots tracked here
-│   ├── SOLUTIONS.md                  # 20 documented solutions
+│   ├── SOLUTIONS.md                  # 27 documented solutions
 │   ├── snapshots/                    # UI/code state at key moments
 │   ├── designs/                      # Architecture diagrams, ADRs
 │   ├── scripts/                      # run_computing.sh, run_all_tests.sh, validate_vault.sh
@@ -63,15 +63,17 @@ devops-agentic-platform/
 │   └── archive/                      # Retired components + RETIREMENT.md
 ├── src/                              # Source code
 ├── templates/                        # Infrastructure templates  
-├── tests/                            # Test suite (118 tests, run with TESTING=1)
+├── tests/                            # Test suite (187 tests, run with TESTING=1)
 │   ├── test_auth_api.py              # auth/RBAC tests ✅
 │   ├── test_sandbox_api.py           # sandbox lifecycle tests ✅
-│   ├── test_workspace_api.py         # workspace CRUD tests ✅
+│   ├── test_sandbox_engine.py        # sandbox engine + state machine tests ✅
+│   ├── test_workspace_api.py         # workspace CRUD + list tests ✅
 │   ├── test_ide_api.py               # IDE config/LSP tests ✅
 │   ├── test_observability_api.py     # Prometheus metrics tests ✅
 │   ├── test_network.py               # Phase 5 routing/DNS/SSL tests ✅
 │   ├── test_agentic_engine.py        # Agent + orchestrator tests ✅
-│   └── test_agentic_api.py           # Agentic API tests ✅
+│   ├── test_agentic_api.py           # Agentic API tests ✅
+│   └── test_llm.py                   # LLM client + backend tests ✅
 ├── docs/                             # Technical documentation
 ├── dev-scripts/ARCHITECTURE_REFERENCE.md  # Component/port reference tables
 ├── .github/workflows/ci.yml          # GitHub Actions CI (pytest, TESTING=1)
@@ -79,6 +81,8 @@ devops-agentic-platform/
 ├── dap_dashboard.py                  # Live metrics dashboard (port 8081)
 ├── conftest.py                       # Pytest config (paths derived from __file__)
 ├── requirements.txt                  # Pinned dependencies (incl. aiosqlite)
+├── .env.template                     # Env var docs (DAP_LLM_*, TESTING)
+├── .venv/                            # Virtualenv, Python 3.14.6 (gitignored; canonical runner)
 ├── HANDOFF.md                        # Latest session handoff document
 ├── dap-grafana-dashboard.json        # Importable Grafana dashboard
 ├── dap_test.db                       # Test-suite SQLite DB (generated, gitignored)
@@ -87,9 +91,9 @@ devops-agentic-platform/
 └── .claude.json                      # Project context for agents (markdown despite the name)
 ```
 
-> **Git repository**: initialized 2026-08-23 on `main` (no remote yet). GitHub Desktop
-> can open the project folder directly; the CI workflow activates once a GitHub
-> remote is added. `core.autocrlf=false` is set to preserve per-file line endings.
+> **Git repository**: `main`, remote `origin` = `https://github.com/mltmacster/devops-agentic-platform`.
+> Published 2026-08-23; GitHub Actions CI (pytest on 3.12/3.13, `TESTING=1`) active and green.
+> `core.autocrlf=false` is set to preserve per-file line endings.
 
 ---
 
@@ -184,8 +188,10 @@ Run `bash .vault/scripts/run_computing.sh audit`, then confirm:
   - `TestGeneratorAgent` — generates unit + integration cases; `test_cases` = combined list, `tests_generated` = its length
   - `AgenticAIOrchestrator` — intent classification (debug → test → architect) + routing
 - **API** (`src/api/agentic/main.py`):
-  - `POST /api/agentic/run` — {sandbox_id, query} → {request_id, status, agent_type, result}
+  - `POST /api/agentic/run` — {sandbox_id, query} → {request_id, status, agent_type, result} (result tagged `engine: "llm" | "heuristic"`)
+  - `GET /api/agentic/llm/status` — whether the LLM backend is configured
   - `GET /api/agentic/health/live` / `GET /api/agentic/health/ready`
+- **LLM backend** (`src/agentic/llm.py`): opt-in via `DAP_LLM_API_KEY`; unconfigured → pure heuristic fallback (CI/keyless behavior unchanged). Each agent has a `SYSTEM_PROMPT` + `execute_async()` LLM path; sync `execute()` stays heuristic.
 
 ### ✅ Phase 4: Compute Automation — COMPLETE
 - `.vault/scripts/run_computing.sh` with audit/cleanup/full modes
@@ -263,3 +269,28 @@ Run `bash .vault/scripts/run_computing.sh audit`, then confirm:
 - Verified 118/118 on both 3.13 (fresh venv, matches CI) and 3.14
 - `.gitignore` hardening: `dap_test.db` comment split to its own line; `docker/` →
   `/docker/` so `templates/docker/` deliverables are tracked
+
+## 📝 Session Notes (2026-08-24 — Next-Phase Gap Closure)
+
+- **Tests**: 187/187 passing (`TESTING=1 .venv/Scripts/python.exe -m pytest tests/ -q`;
+  also verified twice on system python 3.14.6). Test count grew 118 → 187.
+- **Five user-approved items completed** (SOLUTIONS.md Solutions 23–27):
+  1. `GET /api/workspace/workspaces` list endpoint — root-cause fix: `Workspace.created_at`
+     column was missing, so `list_all()` was dead code; ordering is now
+     `created_at DESC, name DESC` (deterministic newest-first)
+  2. Sandbox package renamed `src/sandbox-engine/` → `src/sandbox_engine/` (hyphen made it
+     unimportable); `TRANSITIONS` state machine with 409/404 guards in the API;
+     new `POST /sandboxes/{id}/start`
+  3. Real LLM backend (`src/agentic/llm.py`) — opt-in via `DAP_LLM_API_KEY`, async path,
+     heuristic fallback; `.env.template` added documenting `DAP_LLM_*` + `TESTING`
+  4. `.venv` (Python 3.14.6, all pinned deps) — now the canonical test/serve runner;
+     both live servers were switched to it
+  5. Vault docs updated (SNAPSHOT_LOG, VAULT_OVERVIEW, this file, HANDOFF)
+- **Also fixed**: psutil `NoSuchProcess` race in observability `/metrics`
+  (Solution 26) — was an intermittently flaky determinism test
+- **Live processes** (intentionally kept for user preview, venv python):
+  DAP API on 8001, dashboard on 8081. Verify with `netstat -ano | grep LISTENING`.
+- **Open, awaiting user approval**: `.vault/VAULT_DEPLOYMENT.yaml` fix
+  (YAML syntax error + stale phase plan) — vault-protected, not changed unilaterally
+- **Next goals** (see `HANDOFF.md`): real Podman/gVisor sandbox execution behind the
+  engine stub; remote/production deployment; optional LLM token/latency wiring into metrics

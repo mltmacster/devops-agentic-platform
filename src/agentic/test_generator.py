@@ -1,22 +1,89 @@
 """Test Generator Agent — Writes unit and integration tests.
 
 Analyzes source code or specs to generate pytest-style test fixtures,
-mocks, and assertions that cover happy paths and edge cases.
+mocks, and assertions that cover happy paths and edge cases. Uses an
+LLM when DAP_LLM_API_KEY is configured; otherwise falls back to
+template-based case generation.
 """
 
+import logging
 import re
+
+from .llm import LLMClient, LLMError, get_llm_client
 from .plugin_interface import BaseAgent
 from typing import Dict, Any
+
+logger = logging.getLogger(__name__)
 
 
 class TestGeneratorAgent(BaseAgent):
     """Test Generator: Produces unit and integration tests from specs/code."""
 
+    SYSTEM_PROMPT = (
+        "You are the DAP Test Generator agent. From the user's specification, "
+        "generate test cases. Return ONLY a JSON object with exactly these "
+        'keys: {"test_type": string, "unit_tests": array, "integration_tests": array} '
+        'Rules: test_type is one of "Unit", "Integration", or "Unit + Integration". '
+        "unit_tests and integration_tests are arrays (each 1-10) of objects "
+        '{"name": string, "description": string, "assertion": string, "setup": string}. '
+        'Test names must be unique and start with "test_"."'
+    )
+
     @property
     def name(self) -> str:
         return "Test Generator"
 
-    # ─── Execute method ────────────────
+    # ─── LLM path ─────────────────────────
+
+    async def execute_async(self, request_id: str, query: str) -> Dict[str, Any]:
+        """Execute with the LLM when configured; fall back to heuristics."""
+        llm = get_llm_client()
+        if llm.is_configured:
+            try:
+                return await self._execute_with_llm(llm, request_id, query)
+            except LLMError as exc:
+                logger.warning("LLM path failed (%s); using heuristics", exc)
+
+        result = self.execute(request_id, query)
+        result["engine"] = "heuristic"
+        return result
+
+    async def _execute_with_llm(self, llm: LLMClient, request_id: str, query: str) -> Dict[str, Any]:
+        data = await llm.complete_json(self.SYSTEM_PROMPT, query)
+
+        valid_types = {"Unit", "Integration", "Unit + Integration"}
+        test_type = data.get("test_type")
+        if test_type not in valid_types:
+            raise LLMError(f"LLM result has invalid 'test_type': {test_type!r}")
+
+        def _clean_cases(raw) -> list[Dict[str, str]]:
+            cases = []
+            for case in raw if isinstance(raw, list) else []:
+                if isinstance(case, dict) and isinstance(case.get("name"), str) and case["name"].strip():
+                    cases.append({
+                        "name": case["name"],
+                        "description": str(case.get("description", "")),
+                        "assertion": str(case.get("assertion", "")),
+                        "setup": str(case.get("setup", "")),
+                    })
+            return cases[:10]
+
+        unit_tests = _clean_cases(data.get("unit_tests"))
+        integration_tests = _clean_cases(data.get("integration_tests"))
+        if not unit_tests and not integration_tests:
+            raise LLMError("LLM result has no test cases")
+
+        test_cases = unit_tests + integration_tests
+        return {
+            "test_type": test_type,
+            "tests_generated": len(test_cases),
+            "test_cases": test_cases,
+            "unit_tests": unit_tests,
+            "integration_tests": integration_tests,
+            "engine": "llm",
+        }
+
+    # ─── Execute method (heuristic path) ───
 
     def execute(self, request_id: str, query: str) -> Dict[str, Any]:
         """Generate tests based on the user's specification."""

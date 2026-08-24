@@ -3,7 +3,7 @@
 Uses async SQLAlchemy + PostgreSQL for persistent storage.
 """
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 # ─── Database imports (must be top-level) ──────────────
@@ -31,6 +31,15 @@ class CreateWorkspaceResponse(BaseModel):
     name: str
     tier: str
     status: str = "active"
+
+
+class WorkspaceSummary(BaseModel):
+    """GET /workspaces — list entry."""
+
+    id: str
+    name: str
+    tier: str
+    status: str
 
 
 class WorkspaceDetail(BaseModel):
@@ -130,6 +139,30 @@ async def create_workspace(
         name=workspace.name,
         tier=workspace.tier,
     )
+
+
+@app.get(
+    "/workspaces",
+    response_model=list[WorkspaceSummary],
+    summary="List workspaces",
+)
+async def list_workspaces(
+    limit: int = Query(50, ge=1, le=200),
+    session=Depends(get_session_dependency),
+):
+    """List active workspaces, newest first. Soft-deleted workspaces are excluded."""
+    repo = WorkspaceRepository(session)
+    workspaces = await repo.list_all(limit=limit)
+
+    return [
+        WorkspaceSummary(
+            id=w.id,
+            name=w.name,
+            tier=w.tier,
+            status=w.status,
+        )
+        for w in workspaces
+    ]
 
 
 @app.get(

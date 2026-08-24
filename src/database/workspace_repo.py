@@ -48,11 +48,11 @@ class WorkspaceRepository:
         return result.scalar_one_or_none()
 
     async def list_all(self, limit: int = 50) -> list[Workspace]:
-        """List all active workspaces, newest first."""
+        """List all active workspaces, newest first (name as tie-breaker)."""
         result = await self._session.execute(
             select(Workspace)
             .where(Workspace.status == "active")
-            .order_by(Workspace.created_at.desc())
+            .order_by(Workspace.created_at.desc(), Workspace.name.desc())
             .limit(limit)
         )
         return result.scalars().all()

@@ -264,3 +264,73 @@ async def test_sandbox_lifecycle_full():
     # 5. Delete
     delete_resp = await client.delete(f"/sandboxes/{sb_id}")
     assert delete_resp.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_start_sandbox():
+    """POST /sandboxes/{id}/start should transition a creating sandbox to running."""
+    from src.database import init_db, drop_db
+
+    await drop_db()
+    await init_db()
+
+    client = await _create_client()
+
+    sb_id = (await client.post("/sandboxes", json={"workspace_id": "ws-start"})).json()["id"]
+
+    assert (await client.post(f"/sandboxes/{sb_id}/start")).status_code == 204
+    status_resp = await client.get(f"/sandboxes/{sb_id}/status")
+    assert status_resp.json()["status"] == "running"
+
+
+@pytest.mark.asyncio
+async def test_start_running_rejected():
+    """Starting an already-running sandbox should be rejected with 409."""
+    from src.database import init_db, drop_db
+
+    await drop_db()
+    await init_db()
+
+    client = await _create_client()
+
+    sb_id = (await client.post("/sandboxes", json={"workspace_id": "ws-dup"})).json()["id"]
+    assert (await client.post(f"/sandboxes/{sb_id}/start")).status_code == 204
+
+    resp = await client.post(f"/sandboxes/{sb_id}/start")
+    assert resp.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_double_stop_rejected():
+    """Stopping an already-stopped sandbox should be rejected with 409."""
+    from src.database import init_db, drop_db
+
+    await drop_db()
+    await init_db()
+
+    client = await _create_client()
+
+    sb_id = (await client.post("/sandboxes", json={"workspace_id": "ws-stop"})).json()["id"]
+    assert (await client.post(f"/sandboxes/{sb_id}/start")).status_code == 204
+    assert (await client.post(f"/sandboxes/{sb_id}/stop")).status_code == 204
+
+    resp = await client.post(f"/sandboxes/{sb_id}/stop")
+    assert resp.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_delete_then_touch_404():
+    """Lifecycle actions on a deleted sandbox should 404 (deleted is terminal)."""
+    from src.database import init_db, drop_db
+
+    await drop_db()
+    await init_db()
+
+    client = await _create_client()
+
+    sb_id = (await client.post("/sandboxes", json={"workspace_id": "ws-term"})).json()["id"]
+    assert (await client.delete(f"/sandboxes/{sb_id}")).status_code == 204
+
+    assert (await client.post(f"/sandboxes/{sb_id}/start")).status_code == 404
+    assert (await client.post(f"/sandboxes/{sb_id}/stop")).status_code == 404
+    assert (await client.get(f"/sandboxes/{sb_id}/status")).status_code == 404
