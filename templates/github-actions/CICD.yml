@@ -1,0 +1,117 @@
+# =============================================
+# GitHub Actions CI/CD Pipeline — DAP
+# =============================================
+
+name: DevOps Agentic Platform CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ==========================================
+  # Lint & Test Stage
+  # ==========================================
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run linters
+        run: |
+          pip install ruff pylint mypy black
+          black --check .
+          ruff check .
+          mypy src/
+
+      - name: Run tests
+        run: |
+          pytest --cov=src --cov-report=xml -v
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+
+  # ==========================================
+  # Build & Push Stage
+  # ==========================================
+  build:
+    needs: lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+  # ==========================================
+  # Integration Test Stage
+  # ==========================================
+  integration:
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpass
+      redis:
+        image: redis:7
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run integration tests
+        run: |
+          pytest tests/integration/ --pytest-args="-v"
+
+  # ==========================================
+  # Deploy to Staging (manual approval)
+  # ==========================================
+  deploy-staging:
+    needs: integration
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to staging K8s cluster
+        run: |
+          kubectl apply -f templates/kubernetes/ --namespace=devops-platform-staging
+
+  # ==========================================
+  # Deploy to Production (manual approval)
+  # ==========================================
+  deploy-production:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to production K8s cluster
+        run: |
+          kubectl apply -f templates/kubernetes/ --namespace=devops-platform-prod

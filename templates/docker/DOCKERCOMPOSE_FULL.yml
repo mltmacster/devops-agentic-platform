@@ -1,0 +1,128 @@
+# =============================================
+# Docker Compose Template — DAP Full Stack
+# =============================================
+
+version: "3.9"
+
+x-common-env: &common-env>
+  NODE_ENV: ${NODE_ENV:-development}
+  LOG_LEVEL: ${LOG_LEVEL:-debug}
+
+x-common-volumes: &common-volumes>
+  - app-data:/app/data
+  - logs:/logs
+
+services:
+  # ---- API Services ----
+  api-gateway:
+    build:
+      context: ./src/api
+      args:
+        - SERVICE=api-gateway
+    image: dap/gateway:${TAG:-latest}
+    environment: *common-env
+    ports:
+      - "8000:8000"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      workspace-service:
+        condition: service_healthy
+
+  auth-service:
+    build:
+      context: ./src/api/auth
+      args:
+        - SERVICE=auth
+    image: dap/auth:${TAG:-latest}
+    environment: *common-env
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8001:8001"
+    depends_on:
+      redis: {}
+
+  workspace-service:
+    build:
+      context: ./src/api/workspace
+      args:
+        - SERVICE=workspace
+    image: dap/workspace:${TAG:-latest}
+    environment: *common-env
+      - DB_URL=postgresql://postgres:secret@database:5432/dap
+    ports:
+      - "8002:8002"
+
+  ide-service:
+    build:
+      context: ./src/api/ide
+      args:
+        - SERVICE=ide
+    image: dap/ide:${TAG:-latest}
+    environment: *common-env
+    ports:
+      - "8003:8003"
+
+  observability-service:
+    build:
+      context: ./src/api/observability
+      args:
+        - SERVICE=observability
+    image: dap/observability:${TAG:-latest}
+    environment: *common-env
+      - PROMETHEUS_PORT=9090
+    ports:
+      - "8005:9090"
+
+  # ---- AI Engine ----
+  ai-engine:
+    build:
+      context: ./src/agentic
+      args:
+        - SERVICE=ai-engine
+    image: dap/ai-engine:${TAG:-latest}
+    environment: *common-env
+      - OLLAMA_URL=http://ollama:11434
+    ports:
+      - "8004:8004"
+
+  # ---- Data Services ----
+  database:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: dap
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes: *common-volumes
+
+  redis:
+    image: redis:7-alpine
+    volumes: *common-volumes
+
+  # ---- AI Inference ----
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - /root/.ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+
+  # ---- Observability Stack ----
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9091:9090"
+
+  grafana:
+    image: grafana/grafana:10.3
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    ports:
+      - "3001:3000"
+
+  # ---- Dev Tools ----
+  devtools:
+    image: docker/slice/shell
+    volumes: *common-volumes

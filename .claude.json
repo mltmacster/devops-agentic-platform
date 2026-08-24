@@ -1,0 +1,117 @@
+# DevOps Agentic Development Platform (DAP)
+
+Multi-tenant SaaS coding sandbox built on a custom Lite VM + Lite Linux Ubuntu OS,
+with an embedded Lite IDE and agentic AI coding assistants.
+
+## Architecture Overview
+
+```
+┌───────────────────────┐     ┌──────────────────┐
+│    Client Layer       │     │  Edge & Gateway   │
+│ Browser / VS Code Ext│────▶│ WAF + API GW     │
+└───────────────────────┘     └────────┬─────────┘
+                                      │
+                    ┌───────────────▼───────────────┐
+                    │  Control Plane (FastAPI)      │
+                    ├───────────────┬───────────────┤
+                    │ Auth Service  │ Workspace     │
+                    │ (IAM/RBAC)    │ Orchestrator  │
+                    ├───────────────┤───────────────┤
+                    │ Sandbox LM    │ Agentic AI    │
+                    │ (VM lifecycle)│ Engine        │
+                    ├───────────────┤───────────────┤
+                    │ Observability │ Dashboard     │
+                    │ Collector     │ API           │
+                    └───────────────┴───────────────┘
+                                      │
+                    ┌───────────────▼───────────────┐
+                    │  Data Plane (Shared Services)   │
+                    ├───────────────┬───────────────┤
+                    │ Lite VM Pool  │ Redis Cluster   │
+                    │ (Ubuntu 24.04)│ PostgreSQL +    │
+                    └───────────────┤ pgVector 0.8.0  │
+                    └───────────────┴───────────────┘
+
+## Key Features
+
+- **Multi-Tenant**: Isolated sandboxes per user/team with RBAC
+- **Embedded IDE**: Monaco Editor with LSP integration, real-time diagnostics
+- **Agentic AI Engine**: Multi-agent system (Code Architect, Debugger, Test Generator)
+- **Plugin Architecture**: Extensible stacks (Python, Rust, Node.js, ML/Data)
+- **Zero-Trust Network**: Cilium eBPF enforcement, whitelist-only egress
+- **Observability**: Prometheus metrics, Grafana dashboards, full audit trail
+
+## Development Stacks in Sandbox
+
+| Stack | Runtime | Tools |
+|-------|---------|-------|
+| Python | 3.12 + pip | FastAPI, SQLite |
+| Rust | 1.70+ + cargo | Actix-web |
+| Node.js | 20.x + npm/yarn | React, Express |
+| ML/Data | Python | pgVector 0.8.0, Ollama, LangGraph |
+
+## Security Controls
+
+- **IAM**: OAuth2/OIDC authentication via Keycloak/Auth0
+- **RBAC**: GA > Team Admin > Developer > Read-Only hierarchy
+- **GA**: General Admin with system-wide override capabilities
+- **Network**: Zero-trust via Cilium eBPF, whitelist-only outbound
+
+## Quick Start (Development)
+
+```bash
+# 1. Clone & setup
+git clone <repo> && cd devops-agentic-platform
+
+# 2. Create virtual environment
+python -m venv .venv && source .venv/bin/activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Start full stack (Docker Compose)
+docker compose up -d
+
+# 5. Open dashboard
+open http://localhost:3001   # Grafana/Grafana UI
+
+# 6. Create first workspace
+curl -X POST http://localhost:8002/workspaces \
+  -H "Authorization: Bearer <token>" \
+  -d '{"name": "my-workspace", "tier": "pro"}'
+```
+
+## Project Structure
+
+```
+devops-agentic-platform/
+├── docs/                          # Technical documentation (see docs/)
+│   ├── 01-architectural-overview.md    # High-level architecture
+│   ├── 02-service-boundaries.md        # Microservices detail
+│   ├── 03-security-controls.md         # IAM, RBAC, GA deep dive
+│   ├── 04-sandbox-engine.md            # Lite VM architecture & specs
+│   ├── 05-ide-integration.md           # Embedded IDE spec (Monaco, LSP)
+│   ├── 06-agentic-engine.md            # Agentic AI multi-agent architecture
+│   └── 07-observability-dashboard.md    # Metrics, Grafana dashboards
+├── src/                           # Source code
+│   ├── api/                         # FastAPI microservices
+│   │   ├── auth/                      # IAM + RBAC service
+│   │   ├── workspace/                 # Multi-tenant orchestration
+│   │   ├── sandbox/                   # Sandbox lifecycle management
+│   │   ├── ide/                       # IDE WebSocket API
+│   │   └── observability/             # Metrics collection service
+│   ├── sandbox-engine/                # Lite VM / container orchestrator
+│   │   └── vm_manager.py              # VM lifecycle (boot/shutdown/suspend)
+│   ├── ide-core/                      # Embedded IDE (Monaco Editor)
+│   │   └── editor_config.ts           # VS Code Web / Monaco configuration
+│   ├── agentic/                       # Agentic AI orchestration layer
+│   │   ├── agent_orchestrator.py      # Multi-agent routing & coordination
+│   │   └── tool_provider.py           # Plugin registry & tool discovery
+│   └── common/                        # Shared utilities (logging, config)
+├── docker-compose.yml                 # Full stack orchestration
+└── requirements.txt                   # Python dependencies
+```
+
+## License
+
+MIT — Use freely for personal and commercial projects.

@@ -1,0 +1,13 @@
+# =============================================
+# Helm Chart — DAP Microservice Template
+# =============================================
+
+apiVersion: v2
+name: dap-{{ .Chart.Name }}
+description: >
+  Helm chart for the DevOps Agentic Platform microservices.
+  Template for any of our 6 services: gateway, auth, workspace, sandbox, ide, observability.
+
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

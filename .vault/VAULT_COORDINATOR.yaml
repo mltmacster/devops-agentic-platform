@@ -1,0 +1,58 @@
+# =============================================
+# VAULT COORDINATION SCHEMA
+# =============================================
+# Defines how all Vault artifacts interrelate and how agents should
+# coordinate when creating, updating, or referencing Vault content.
+
+coordination:
+  # ─── Cross-Reference Rules ──────────────
+  cross_ref_rules:
+    - rule: "Every code change must reference a Vault snapshot"
+      scope: "all commits"
+      action: "Create .vault/snapshots/YYYY-MM-DD-HH/MM/<service>/ diff + summary"
+
+    - rule: "Every RBAC/permission change requires a design doc"
+      scope: "src/api/auth/"
+      action: "Create .vault/designs/ YYYYY-MM-DD_RBAC_UPDATE.md"
+
+    - rule: "Every bug fix requires a solution document"
+      scope: "all source code"
+      action: "Create .vault/docs/solutions/YYYY-MM-DD_ISSUE.md with RCA"
+
+    - rule: "Every deprecated component must have a retirement doc"
+      scope: "src/api/*, src/src/*"
+      action: "Create .vault/archive/YYYY-MM-DD_<component>/RETIREMENT.md"
+
+  # ─── Naming Conventions ────────────────
+  naming:
+    timestamp_format: "YYYY-MM-DD-HHMM"        # e.g., 2026-08-21-1435
+    snapshot_pattern: "snap_<service>_<feature>.md"
+    solution_pattern: "sol_<issue_type>_{id}.md"
+    deprecated_pattern: "dep_<component>.md"
+
+  # ─── Agent Behavior Rules ──────────────
+  agent_constraints:
+    - rule: "Never delete files in .vault/"
+      enforcement: "hard"
+
+    - rule: "Always create a snapshot before major code changes"
+      enforcement: "warning"
+
+    - rule: "Any solution must include verification steps"
+      enforcement: "hard"
+
+    - rule: "Deprecation docs must include migration steps"
+      enforcement: "hard"
+
+    - rule: "Snapshots must link to existing code paths"
+      enforcement: "warning"
+
+  # ─── Review Gates ──────────────────────
+  review_gates:
+    before_commit:
+      - "Check if this change creates a deprecation"
+      - "Verify snapshot was created for significant changes"
+
+    before_merge:
+      - "Cross-reference all solution docs with actual code"
+      - "Verify no broken links in design documents"

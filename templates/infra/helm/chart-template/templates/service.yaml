@@ -1,0 +1,18 @@
+# =============================================
+# Helm Template — Service Manifest
+# =============================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dap-{{ .Chart.Name }}.service.name" . }}
+  labels:
+    {{ include "dap-{{ .Chart.Name }}.service.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{ include "dap-{{ .Chart.Name }}.service.labels" . | nindent 6 }}
+  ports:
+    - port: {{ .Values.service.ports[0].port | default 80 }}
+      targetPort: {{ .Values.service.ports[0].targetPort | default 80 }}
+      protocol: TCP

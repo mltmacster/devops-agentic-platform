@@ -1,0 +1,11 @@
+# DevOps Agentic Development Platform - Templates
+
+This directory contains templates for all documentation, infrastructure, and automation artifacts.
+
+## Structure
+- `docs/` — Documentation templates (Mermaid diagrams, ADRs)
+- `api/` — API templates (OpenAPI specs, Pydantic models)
+- `docker/` — Docker Compose snippets, Dockerfiles
+- `kubernetes/` — K8s manifests and Helm chart templates
+- `github-actions/` — CI/CD workflow templates
+- `scripts/` — Reusable shell/Python scripts

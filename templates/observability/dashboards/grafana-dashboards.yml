@@ -1,0 +1,154 @@
+# =============================================
+# Observability Dashboard — Grafana Template (DAP)
+# =============================================
+
+# Deploy with:
+#   helm install grafana https://grafana.github.io/terraform-modules/grafana \
+#     --namespace monitoring --create-namespace \
+#     -f values-grafana.yaml
+
+# =============================================
+# Dashboard: Platform Overview (ID: 1)
+# =============================================
+
+dashboard:
+  uid: "dap-platform-overview"
+  title: "DAP Platform Overview"
+  panels:
+    - title: "Service Health"
+      type: "status"
+      datasource: prometheus
+      targets: [up{job=~".*"}]
+
+    - title: "Request Rate"
+      type: "graph"
+      datasource: prometheus
+      targets: [rate(http_requests_total[5m])]
+
+    - title: "Error Rate"
+      type: "graph"
+      datasource: prometheus
+      targets: [rate(http_requests_total{status=~"5.."}[5m])]
+
+    - title: "Sandbox VM Count"
+      type: "stat"
+      datasource: prometheus
+      targets: [sandbox_vm_status_total]
+
+    - title: "Disk Usage"
+      type: "graph"
+      datasource: prometheus
+      targets: [node_filesystem_usage_percent]
+
+    - title: "Network Traffic"
+      type: "graph"
+      datasource: prometheus
+      targets: [network_rx_bytes_total, network_tx_bytes_total]
+
+# =============================================
+# Dashboard: Agentic Engine (ID: 2)
+# =============================================
+
+dashboard:
+  uid: "dap-agentic-engine"
+  title: "Agentic AI Engine"
+  panels:
+    - title: "Agent Status"
+      type: "stat"
+      datasource: prometheus
+      targets: [agentic_agent_status_total]
+
+    - title: "Tool Invocation Rate"
+      type: "graph"
+      datasource: prometheus
+      targets: [agentic_tool_invocations_total]
+
+    - title: "Context Window Usage"
+      type: "graph"
+      datasource: prometheus
+      targets: [agentic_context_tokens_used]
+
+    - title: "API Response Time"
+      type: "histogram"
+      datasource: prometheus
+      targets: [agentic_api_latency_seconds]
+
+    - title: "Error Budget"
+      type: "stat"
+      datasource: prometheus
+      targets: [agentic_error_budget_remaining]
+
+# =============================================
+# Dashboard: Multi-Tenancy (ID: 3)
+# =============================================
+
+dashboard:
+  uid: "dap-multitenancy"
+  title: "Multi-Tenant Usage"
+  panels:
+    - title: "Active Workspaces"
+      type: "stat"
+      datasource: prometheus
+      targets: [workspace_active_count]
+
+    - title: "Users per Team"
+      type: "graph"
+      datasource: prometheus
+      targets: [users_per_team_total]
+
+    - title: "Quota Utilization"
+      type: "gauge"
+      datasource: prometheus
+      targets: [workspace_quota_usage_percent]
+
+    - title: "Sandbox Runtime (by team)"
+      type: "graph"
+      datasource: prometheus
+      targets: [sandbox_runtime_seconds_total]
+
+# =============================================
+# Alert Rules (prometheus.yml)
+# =============================================
+
+groups:
+  - name: dap_platform
+    rules:
+      # ─── Service Health ──────────────────────
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "Error rate > 5%"
+
+      - alert: HighLatencyP99
+        expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 10m
+        labels: { severity: warning }
+
+      # ─── Resource Usage ──────────────────────
+      - alert: HighCPUUsage
+        expr: node_cpu_usage_seconds_total > 0.85
+        for: 15m
+        labels: { severity: warning }
+
+      - alert: HighMemoryUsage
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.1
+        for: 15m
+        labels: { severity: critical }
+
+      - alert: DiskSpaceLow
+        expr: node_filesystem_available_bytes / node_filesystem_size_bytes < 0.15
+        for: 30m
+        labels: { severity: warning }
+
+      # ─── Agentic Engine ──────────────────────
+      - alert: AgentDown
+        expr: up{job=~".*agentic.*"} == 0
+        for: 1m
+        labels: { severity: critical }
+
+      - alert: HighContextTokenUsage
+        expr: agentic_context_tokens_used > 100000
+        for: 5m
+        labels: { severity: warning }

@@ -1,0 +1,123 @@
+# =============================================
+# Kubernetes Deployment Manifests — DAP
+# =============================================
+
+---
+# ============================================
+# Namespace & RBAC
+# ============================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: devops-platform
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dap-platform-role
+  namespace: devops-platform
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "create", "update", "delete"]
+
+---
+# ============================================
+# Service Mesh (Istio) Config
+# ============================================
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: dap-gateway
+  namespace: devops-platform
+spec:
+  hosts:
+    - "*"
+  gateways:
+    - dap-gateway-gateway
+  http:
+    - route:
+        - destination:
+            host: api-gateway
+            port: number: 80
+    - route:
+        - destination:
+            host: ide-service
+            port: number: 80
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: dap-gateway-gateway
+  namespace: devops-platform
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+      protocol: HTTP
+
+---
+# ============================================
+# Service Definitions
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: devops-platform
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: gateway
+          image: dap/gateway:v1.0.0
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+---
+# ============================================
+# Network Policies (Zero Trust)
+# ============================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-internal-traffic
+  namespace: devops-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: ""
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: ""
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: ""

@@ -1,0 +1,66 @@
+# =============================================
+# Helm Template — Deployment Manifest
+# =============================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dap-{{ .Chart.Name }}.deployment.name" . }}
+  labels:
+    {{ include "dap-{{ .Chart.Name }}.deployment.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.strategy.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.strategy.rollingUpdate.maxUnavailable }}
+  selector:
+    matchLabels:
+      {{ include "dap-{{ .Chart.Name }}.deployment.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{ include "dap-{{ .Chart.Name }}.deployment.labels" . | nindent 8 }}
+    spec:
+      {{- if .Values.serviceAccountName }}
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      {{- endif }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPorts.http }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: {{ .Values.containerPorts.http }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.containerPorts.http }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          resources:
+            limits:
+              cpu: {{ .Values.resources.limits.cpu | quote }}
+              memory: {{ .Values.resources.limits.memory | quote }}
+            requests:
+              cpu: {{ .Values.resources.requests.cpu | quote }}
+              memory: {{ .Values.resources.requests.memory | quote }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.secretName | default "dap-secret" }}
+          env:
+            {{- range .Values.env }}
+            - name: {{ .name | quote }}
+              value: {{ .value | quote }}
+            {{- end }}

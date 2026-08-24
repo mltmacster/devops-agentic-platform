@@ -1,0 +1,7 @@
+# Documentation Templates
+
+This directory contains templates for all documentation artifacts:
+- Architecture diagrams (Mermaid YAML)
+- Service design docs
+- Runbooks/SOPs
+- ADR (Architecture Decision Records)
