@@ -26,7 +26,10 @@ USER appuser
 
 # Copy application code
 COPY src/api/${SERVICE}/ ./src/
-COPY src/sandbox-engine/ ./sandbox-engine/
+COPY src/sandbox_engine/ ./sandbox_engine/
+
+# Note: for the current single-deployable layout prefer templates/docker/Dockerfile
+# (src.main monolith); this template targets a future per-service split.
 
 # Expose port and start
 EXPOSE 8000

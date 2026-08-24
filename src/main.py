@@ -6,9 +6,14 @@ for local development. In production, each service would be its own container.
 To run: uvicorn main:app --host 0.0.0.0 --port 8000
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+from src.database import init_db
+from src.sandbox_engine import SandboxLifecycleManager
 
 # ─── Microservices (import each service's app) ──
 from src.api.auth.main import app as auth_app
@@ -27,7 +32,20 @@ from src.network import (
 )
 
 # ─── Root Application ──────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup: ensure database schema exists (idempotent create_all)."""
+    try:
+        await init_db()
+    except Exception as exc:  # never block boot on DB issues; log and continue
+        import logging
+        logging.getLogger(__name__).error("DB init failed: %s", exc)
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="DevOps Agentic Platform (DAP)",
     description=(
         "Multi-tenant SaaS coding sandbox with embedded IDE and agentic AI assistants.\n\n"
@@ -356,8 +374,9 @@ async def root():
 
 @app.get("/health")
 async def health():
-    """Global health check."""
+    """Global health check (incl. selected sandbox execution backend)."""
     return {
         "status": "healthy",
         "service": "dap-main",
+        "sandbox_runtime": SandboxLifecycleManager().backend.name,
     }

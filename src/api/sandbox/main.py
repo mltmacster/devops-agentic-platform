@@ -10,8 +10,8 @@ from pydantic import BaseModel
 from src.database import get_session
 from src.database.sandbox_repo import SandboxRepository
 
-# ─── Sandbox engine: lifecycle state machine ──────
-from src.sandbox_engine import SandboxState, can_transition, state_from_str
+# ─── Sandbox engine: lifecycle state machine + execution backend ──────
+from src.sandbox_engine import SandboxLifecycleManager, SandboxState, can_transition, state_from_str
 
 # ─── Network imports for URL formatting ──────────────
 from src.network import NetworkConfig, build_ide_config_urls
@@ -42,6 +42,7 @@ class SandboxStatus(BaseModel):
     id: str
     status: str  # creating | running | stopped | suspended | error
     stack: str
+    runtime: str = "null"  # sandbox execution backend (null | podman | runsc)
     resources: dict
 
 
@@ -67,6 +68,19 @@ async def get_session_dependency():
     """FastAPI dependency that yields a database session."""
     async with get_session() as session:
         yield session
+
+
+# ─── Sandbox engine (execution backend) ────────────────
+
+_engine: SandboxLifecycleManager | None = None
+
+
+def _get_engine() -> SandboxLifecycleManager:
+    """Lazily-created process-wide sandbox engine (backend auto-selected)."""
+    global _engine
+    if _engine is None:
+        _engine = SandboxLifecycleManager()
+    return _engine
 
 
 async def _validate_transition(
@@ -169,6 +183,7 @@ async def get_sandbox_status(
         id=sandbox.id,
         status=sandbox.state,
         stack=sandbox.stack,
+        runtime=_get_engine().runtime,
         resources={
             "cpu_cores_used": round(sandbox.cpu_cores_used, 2),
             "memory_mb_used": sandbox.memory_mb_used,

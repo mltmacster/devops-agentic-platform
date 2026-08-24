@@ -3,24 +3,30 @@
 # =============================================
 # Defines how all Vault artifacts interrelate and how agents should
 # coordinate when creating, updating, or referencing Vault content.
+#
+# Version: 1.1 — 2026-08-24 consistency pass (user-approved):
+#   - deprecation scope typo fixed (`src/api/*, src/src/*` -> `src/`)
+#   - RBAC doc date pattern typo fixed (`YYYYY-MM-DD` -> `YYYY-MM-DD`)
+#   - snapshot rule aligned to the actual `YYYY-MM-DD-<name>/` layout
+#   - solution rule aligned to the single-file SOLUTIONS.md practice
 
 coordination:
   # ─── Cross-Reference Rules ──────────────
   cross_ref_rules:
     - rule: "Every code change must reference a Vault snapshot"
       scope: "all commits"
-      action: "Create .vault/snapshots/YYYY-MM-DD-HH/MM/<service>/ diff + summary"
+      action: "Copy pre-change files to .vault/snapshots/YYYY-MM-DD-<name>/ + log in SNAPSHOT_LOG.md"
 
     - rule: "Every RBAC/permission change requires a design doc"
       scope: "src/api/auth/"
-      action: "Create .vault/designs/ YYYYY-MM-DD_RBAC_UPDATE.md"
+      action: "Create .vault/designs/YYYY-MM-DD_RBAC_UPDATE.md"
 
     - rule: "Every bug fix requires a solution document"
       scope: "all source code"
-      action: "Create .vault/docs/solutions/YYYY-MM-DD_ISSUE.md with RCA"
+      action: "Append an entry to .vault/SOLUTIONS.md with RCA (single-file practice)"
 
     - rule: "Every deprecated component must have a retirement doc"
-      scope: "src/api/*, src/src/*"
+      scope: "src/"
       action: "Create .vault/archive/YYYY-MM-DD_<component>/RETIREMENT.md"
 
   # ─── Naming Conventions ────────────────

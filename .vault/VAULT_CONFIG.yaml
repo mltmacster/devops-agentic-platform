@@ -3,6 +3,13 @@
 # =============================================
 # This file defines the structure, rules, and coordination protocols for
 # the project Vault — a protected knowledge repository that persists across sessions.
+#
+# Version: 1.1 — 2026-08-24 consistency pass (user-approved):
+#   - auto-backup comment fixed (the vault IS git-tracked; only logs/ and
+#     certs/ subdirs are gitignored)
+#   - archive schema corrected to the actual `YYYY-MM-DD_<component>/` layout
+#   - snapshot schema corrected to the actual `YYYY-MM-DD-<name>/` layout
+#   v1.0 (2026-08-21) is preserved in .vault/snapshots/2026-08-24-production/vault/
 
 vault:
   name: "DevOps Agentic Platform Vault"
@@ -15,19 +22,19 @@ vault:
   protection:
     immutable_paths: [".vault/"]              # Agents may not delete or modify
     excluded_from_automation: true           # No agent runs can clean this directory
-    auto-backup_enabled: true                # Git-ignored but tracked separately
+    auto-backup_enabled: true                # Tracked in git; only logs/ and certs/ subdirs are gitignored
     retention_policy: "indefinite"            # Nothing is ever purged automatically
 
   # ─── Directory Schema ─────────────────────
   directories:
     .vault/archive: >
       Deprecated & Retired artifacts with lifecycle documentation.
-      - Structure: .vault/archive/YYYY-MM-DD/<artifact-type>/
-      - Includes: Quick summary, reason for retirement, replacement path
+      - Structure: .vault/archive/YYYY-MM-DD_<component>/ (e.g. 2026-08-24_vault-deployment-v1/)
+      - Includes: Quick summary, reason for retirement, replacement path, RETIREMENT.md
 
     .vault/snapshots: >
       UI/UX and code state snapshots for preview, comparison, and regression testing.
-      - Structure: .vault/snapshots/YYYY-MM-DD-HH/MM/<service>/*
+      - Structure: .vault/snapshots/YYYY-MM-DD-<name>/ (e.g. 2026-08-24-production/)
       - Contains: Screenshots, dashboard exports, code diffs, config snapshots
 
     .vault/designs: >

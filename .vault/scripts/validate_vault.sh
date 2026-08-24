@@ -1,24 +1,44 @@
 #!/bin/bash
-# VAULT VALIDATION SCRIPT
-# Validates Vault YAML configurations and structure
+# VAULT VALIDATION SCRIPT (v1.1 — 2026-08-24 consistency pass, user-approved)
+# Validates Vault YAML configurations and structure.
+# Fixes: VAULT_DIR no longer resolves to .vault/.vault (the script already
+# lives inside .vault/scripts/); interpreter is auto-detected (python, with
+# python3 fallback) since the MS Store python3 stub is broken on this machine;
+# VAULT_DEPLOYMENT.yaml is now in REQUIRED_FILES.
+# Run from the repo root: bash .vault/scripts/validate_vault.sh
+
+# Resolve project root = parent of .vault (this script is in .vault/scripts/)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+VAULT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$VAULT_DIR/.." && pwd)"
+cd "$REPO_ROOT" || exit 1
+
+# Interpreter auto-detect: prefer `python`, fall back to `python3`
+if command -v python >/dev/null 2>&1; then
+    PY="python"
+elif command -v python3 >/dev/null 2>&1; then
+    PY="python3"
+else
+    echo "❌ No python interpreter found on PATH" >&2
+    exit 1
+fi
 
 set -e
 
-VAULT_DIR="$(cd "$(dirname "$0")/.." && pwd)/.vault"
-SCRIPT_DIR="$VAULT_DIR"
-
 echo "============================================="
 echo "  VAULT CONFIGURATION VALIDATOR"
+echo "  Vault: $VAULT_DIR"
 echo "============================================="
 
-# Check required YAML files exist
+errors=0
+
+# Check required vault files exist
 REQUIRED_FILES=(
   ".vault/VAULT_CONFIG.yaml"
   ".vault/VAULT_COORDINATOR.yaml"
+  ".vault/VAULT_DEPLOYMENT.yaml"
   ".vault/LIFECYCLE_PROTOCOL.md"
 )
-
-errors=0
 
 for file in "${REQUIRED_FILES[@]}"; do
     if [ ! -f "$file" ]; then
@@ -29,15 +49,18 @@ for file in "${REQUIRED_FILES[@]}"; do
     fi
 done
 
-# Validate YAML syntax
+# Validate YAML syntax (PyYAML must be available in the chosen interpreter)
 echo ""
 echo "Checking YAML syntax..."
 for yaml_file in .vault/*.yaml; do
     if [ -f "$yaml_file" ]; then
-        echo "  Validating $(basename $yaml_file)..."
-        python3 -c "import yaml; yaml.safe_load(open('$yaml_file'))" 2>/dev/null && \
-            echo "  ✅ $yaml_file - Valid YAML" || \
-            (echo "  ❌ $yaml_file - Invalid YAML" && errors=$((errors + 1)))
+        echo "  Validating $(basename "$yaml_file")..."
+        if "$PY" -c "import yaml, sys; yaml.safe_load(open(sys.argv[1], encoding='utf-8'))" "$yaml_file" 2>/dev/null; then
+            echo "  ✅ $yaml_file - Valid YAML"
+        else
+            echo "  ❌ $yaml_file - Invalid YAML"
+            errors=$((errors + 1))
+        fi
     fi
 done
 

@@ -1,8 +1,14 @@
 # =============================================
 # VAULT DEPLOYMENT & ROADMAP COORDINATOR
 # =============================================
-# Defines the deployment pipeline, future development roadmap, and 
-# coordination between all Vault artifact types.
+# Version: 2.0.0 — 2026-08-24
+# Replaces v1.0 (2026-08-21), retired 2026-08-24 with user approval.
+# Why v1 was replaced: invalid YAML (markdown `- [ ]` checkboxes embedded in
+# list items + mis-indented task keys — failed yaml.safe_load) and a roadmap
+# frozen at Phase 1 while Phases 2/3/5 are complete.
+# Full RCA: .vault/archive/2026-08-24_vault-deployment-v1/RETIREMENT.md
+# Rule: checklists stay in markdown or in status fields — never checkbox
+# syntax inside YAML. Validate before commit: bash .vault/scripts/validate_vault.sh
 
 deployment:
   # ─── Pipeline Stages ──────────────
@@ -10,102 +16,124 @@ deployment:
     - name: "development"
       triggers: ["code_change", "test_pass"]
       actions:
-        - "run_tests"
-        - "create_snapshot"
-        - "update_snapshots.md"
+        - "run_tests (TESTING=1 .venv/Scripts/python.exe -m pytest tests/ -q)"
+        - "create_snapshot (.vault/snapshots/YYYY-MM-DD-<name>/)"
+        - "update_SNAPSHOT_LOG"
 
     - name: "validation"
       triggers: ["PR_open", "merge"]
       actions:
         - "run_integration_tests"
         - "verify_snapshots"
-        - "update_solutions.md_if_fix_found"
+        - "update_SOLUTIONS_md_if_fix_found"
+        - "bash .vault/scripts/validate_vault.sh"
 
     - name: "production"
       triggers: ["merge_to_main", "release_tag"]
       actions:
-        - "deploy_app"
+        - "docker compose -f templates/docker/DOCKERCOMPOSE_PROD.yml up -d"
+        - "verify /api/health + Caddy TLS on DAP_PUBLIC_HOST"
         - "create_architecture_snapshot"
 
-  # ─── Future Development Synergy Plan ──
+  # ─── Current State ──────────────────
   roadmap:
-    current_state: "Phase 1: Core Microservices (Auth/Workspace/Sandbox)"
-    
-    phase_2: "IDE Integration & Observability"
-      description: >
-        Implement real-time developer experience with Monaco Editor integration
-        and Prometheus/Grafana observability stack.
-      tasks:
-        - [ ] Implement IDE WebSocket server (Monaco Editor + LSP)
-          status: "planning"
-          files_needed: ["src/api/ide/main.py", "src/api/ide/ws_handler.py"]
-          dependencies: ["workspace", "auth"]
-        
-        - [ ] Implement Prometheus metrics collection
-          status: "planning"
-          files_needed: ["src/api/observability/metrics_collector.py"]
-          dependencies: []
-        
-        - [ ] Implement Grafana dashboard API
-          status: "not_started"
-          files_needed: ["src/api/dashboard/main.py"]
-          dependencies: ["metrics_collector"]
-        
-        - [ ] Create IDE UI components (Monaco Editor integration)
-          status: "not_started"
-          files_needed: ["web/app/components/ide-editor.tsx"]
-          dependencies: []
+    version: "2.0.0"
+    current_state: >
+      All five roadmap phases complete (2026-08-24): URL formatting,
+      IDE + observability, agentic AI engine, compute automation, and
+      networkability. Production artifacts in place (compose stack with
+      Postgres + API + dashboard + Caddy/Let's Encrypt, strict auth with
+      real user persistence, real LLM metrics in /metrics). Suite: 219 tests.
 
-    phase_3: "Agentic AI Engine"
-      description: >
-        Multi-agent orchestration system for code generation, debugging, and testing.
-      tasks:
-        - [ ] Build agent orchestration core
-          status: "planning"
-          files_needed: ["src/agentic/agent_orchestrator.py"]
-        - [ ] Implement Code Architect agent
-          status: "not_started"
-        - [ ] Implement Debugger agent
-          status: "not_started"
-        - [ ] Implement Test Generator agent
-          status: "not_started"
+    phases:
+      - name: "Phase 1 — URL Formatting"
+        status: "complete"
+        completed: "2026-08-21"
+        artifacts: ["src/network/url_formatter.py"]
 
-    phase_4: "Production Readiness"
-      description: >
-        Production-grade deployment, monitoring, and scaling.
-      tasks:
-        - [ ] Create Helm chart templates
-          status: "planning"
-          files_needed: ["templates/infra/helm/*/Chart.yaml"]
-        - [ ] Create Terraform IaC templates
-          status: "planning"
-          files_needed: ["templates/infra/terraform/*/main.tf"]
-        - [ ] Implement distributed tracing (Jaeger/OpenTelemetry)
-          status: "not_started"
-        - [ ] Implement rate limiting & quotas
-          status: "planning"
+      - name: "Phase 2 — IDE Integration & Observability"
+        status: "complete"
+        completed: "2026-08-23"
+        artifacts:
+          - "src/api/ide/ (WebSocket /ws/{session_id}, LSP protocol, REST config)"
+          - "src/api/observability/ (Prometheus /metrics, Grafana JSON, /metrics/summary)"
+
+      - name: "Phase 3 — Agentic AI Engine"
+        status: "complete"
+        completed: "2026-08-24"
+        artifacts:
+          - "src/agentic/ (3 agents + orchestrator)"
+          - "src/agentic/llm.py (opt-in real LLM backend, heuristic fallback, LLMStats)"
+          - "src/api/agentic/ (POST /run, GET /llm/status)"
+
+      - name: "Phase 4 — Compute Automation"
+        status: "complete"
+        completed: "2026-08-23"
+        artifacts: [".vault/scripts/run_computing.sh (audit/cleanup/full)"]
+
+      - name: "Phase 5 — Networkability & Production Readiness"
+        status: "complete"
+        completed: "2026-08-23"
+        artifacts:
+          - "src/network/ (public routing, DNS config, SSL manager, URL formatter)"
+          - "templates/docker/Dockerfile + DOCKERCOMPOSE_PROD.yml + Caddyfile (2026-08-24)"
+
+    # ─── Next Goals ───────────────────
+    next_goals:
+      - name: "Production deployment"
+        status: "ready_to_deploy"
+        detail: >
+          Stack is built and compose-validated; needs a host with a public
+          domain (A-record → Caddy HTTP-01 → Let's Encrypt). Set
+          DAP_JWT_SECRET, DAP_PUBLIC_HOST, POSTGRES_PASSWORD in .env.
+        files: ["templates/docker/Dockerfile", "templates/docker/DOCKERCOMPOSE_PROD.yml", "templates/docker/Caddyfile", ".env.template"]
+
+      - name: "Real sandbox execution on a runtime host"
+        status: "ready_to_verify"
+        detail: >
+          Podman/gVisor backends are wired (DAP_SANDBOX_RUNTIME=auto|podman|runsc|null);
+          verify live container create/start/stop on a machine with podman installed.
+        files: ["src/sandbox_engine/backends.py", "src/sandbox_engine/vm_manager.py"]
+
+      - name: "Auth persistence + strict mode"
+        status: "complete"
+        detail: >
+          users table + PBKDF2 + HS256 JWT + DAP_AUTH_STRICT=1 (fail-closed) —
+          done 2026-08-24. Registered users get real signed tokens; first
+          registered user is admin.
+        files: ["src/api/auth/credentials.py", "src/database/user_repo.py"]
+
+      - name: "Real LLM metrics"
+        status: "complete"
+        detail: >
+          /metrics + /metrics/summary now report real token/latency counters
+          (dap_ai_tokens_total, dap_ai_requests_total, dap_ai_latency histogram)
+          from the LLMStats registry — done 2026-08-24.
+        files: ["src/agentic/llm.py", "src/api/observability/main.py"]
 
   # ─── Artifact Dependency Map ──────────
   dependencies:
     snapshot:
       depends_on: ["code_changes"]
-    
+
     solution_doc:
       depends_on: ["debugging_session", "solution_implementation"]
-    
+
     design_doc:
       depends_on: ["architecture_decision", "code_implementation"]
-    
+
     deprecated_component:
       depends_on: ["retirement_decision", "migration_implementation"]
-    
+
     script:
       depends_on: ["reusable_pattern", "testing_complete"]
 
-  # ─── Weekly Review Checklist ──────────
+  # ─── Weekly Review (checklist items as text; keep YAML parseable) ──
   weekly_review:
-    - [ ] Are all code changes backed by Vault snapshots?
-    - [ ] Any bugs fixed documented in SOLUTIONS.md?
-    - [ ] Deprecated components migrated and documented?
-    - [ ] Any new design decisions captured in ARCHITECTURE.md?
-    - [ ] Performance metrics recorded in METRICS/ directory?
+    items:
+      - "All code changes backed by vault snapshots? (check SNAPSHOT_LOG.md)"
+      - "Every bug fix documented in SOLUTIONS.md with a new entry number?"
+      - "Deprecated components migrated and have archive/ RETIREMENT.md?"
+      - "New design decisions captured in ARCHITECTURE.md / designs/?"
+      - "Validate vault YAMLs: bash .vault/scripts/validate_vault.sh"
+      - "Roadmap below still matches reality? (update phases in this file)"

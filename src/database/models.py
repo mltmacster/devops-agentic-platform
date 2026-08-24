@@ -118,6 +118,21 @@ class Sandbox(Base):
     workspace = relationship("Workspace", back_populates="sandboxes")
 
 
+# ─── User (auth persistence) ─────────────────
+class User(Base):
+    """An authenticated platform user (local identity store)."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default="developer")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
 # ─── Seed helper ──────────────────────────────
 def seed_all(session):
     """Seed all tables."""

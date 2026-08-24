@@ -38,16 +38,17 @@
 
 | Service | Files | Tests | Status | Last Updated |
 |---------|-------|-------|--------|-------------|
-| Auth | `src/api/auth/` (3 files) | 13 ✅ | Active | 2026-08-21 |
+| Auth | `src/api/auth/` (4 files, +credentials.py) + `src/database/user_repo.py` | **28 ✅** | Active | 2026-08-24 |
 | Workspace | `src/api/workspace/` (1 file) | **15 ✅** | Active | 2026-08-24 |
 | Sandbox | `src/api/sandbox/` (1 file) + state machine guard | **15 ✅** | Active | 2026-08-24 |
-| Sandbox Engine | `src/sandbox_engine/` (2 files; renamed from `sandbox-engine`) | **39 ✅** | Active | 2026-08-24 |
-| IDE Core (Phase 2) | `src/api/ide/` (1 file) | **11 ✅** | **Active** | 2026-08-21 |
-| Observability (Phase 2) | `src/api/observability/` (1 file; dead collector archived) | **28 ✅** | **Active** | 2026-08-24 |
+| Sandbox Engine | `src/sandbox_engine/vm_manager.py` (3 files) | **39 ✅** | Active | 2026-08-24 |
+| Sandbox Backends | `src/sandbox_engine/backends.py` (null / Podman / gVisor) | **12 ✅** | Active | 2026-08-24 |
+| IDE Core (Phase 2) | `src/api/ide/` (1 file) | **11 ✅** | **Active** | 2026-08-24 |
+| Observability (Phase 2) | `src/api/observability/` (1 file; real LLM metrics wired) + `test_llm_metrics.py` | **33 ✅** (28 + 5 metrics) | **Active** | 2026-08-24 |
 | Agentic AI (Phase 3) | `src/agentic/` (7 + common/ 2) + `src/api/agentic/` (1) | **46 ✅** (incl. 22 llm + 4 engine) | **Active** | 2026-08-24 |
-| Network (Phase 5) | `src/network/` (4 files) | **20 ✅** | **Active** | 2026-08-23 |
+| Network (Phase 5) | `src/network/` (4 files) | **20 ✅** | **Active** | 2026-08-24 |
 
-> **Total: 187 tests** (was 118) — last verified 2026-08-24, `TESTING=1 .venv/Scripts/python.exe -m pytest tests/ -q`
+> **Total: 219 tests** (was 187) — 218 passed + 1 skipped (Windows-only fake-podman test; runs on CI Linux). Last verified 2026-08-24, `TESTING=1 .venv/Scripts/python.exe -m pytest tests/ -q`
 
 ## Phase 2 — IDE Integration & Observability (COMPLETE) ✅
 
@@ -100,15 +101,27 @@
 
 ---
 
+## Production Deployment (BUILT 2026-08-24 — ready to deploy) ✅
+
+- `templates/docker/Dockerfile` — single production image (python:3.12-slim, libpq5, non-root, healthcheck :8001)
+- `templates/docker/DOCKERCOMPOSE_PROD.yml` — postgres + api (`DAP_AUTH_STRICT=1`) + dashboard + Caddy (automatic Let's Encrypt); `docker compose config -q` validated
+- `templates/docker/Caddyfile` — `{$DAP_PUBLIC_HOST}`; `/api/*` + `/ws/*` + `/docs` → api:8001, default → dashboard:8081
+- **Real auth persistence**: `users` table + PBKDF2-HMAC-SHA256 (600k iters) + HS256 JWT pairs (access 15 min / refresh 7 d, rotation); first registered user = admin; `DAP_AUTH_STRICT=1` fails closed, dev default fails open (legacy mock tokens)
+- **Bootstrap**: `src/main.py` lifespan runs `init_db()` at startup (Postgres table creation in production)
+- **Real LLM metrics**: `dap_ai_tokens_total` / `dap_ai_requests_total` / `dap_ai_latency_seconds_*` fed from the `LLMStats` registry in `src/agentic/llm.py` (zeros in keyless envs → determinism tests unaffected)
+- **Sandbox runtime surface**: `DAP_SANDBOX_RUNTIME=auto|podman|runsc|null` (auto = podman if on PATH else null); reported by `/health` + `/api/sandbox/status`; `--network none` on create; failed backend op → ERROR state
+
 ## Open Decisions / TODOs
 
 1. **IDE Integration** — ✅ Done: WebSocket server for Monaco Editor + LSP
-2. **Observability** — ✅ Done: Prometheus metrics collection and Grafana Dashboard API  
-3. **Auth Persistence** — Still stubbed; needs real user storage (DB or identity provider)
+2. **Observability** — ✅ Done: Prometheus metrics collection and Grafana Dashboard API (real LLM counters since 2026-08-24)  
+3. **Auth Persistence** — ✅ Done 2026-08-24: real user store (users table), PBKDF2, signed JWT, strict/dev modes (see Production Deployment section)
 4. **RBAC Testing** — Need integration tests for actual role-based access
-5. **Agentic AI Engine** — ✅ Done (Phase 3); real LLM backend (opt-in, `DAP_LLM_API_KEY`) with heuristic fallback (see `HANDOFF.md`)
-6. **Networkability** — ✅ Done (Phase 5); production would use NGINX/ALB + Let's Encrypt
+5. **Agentic AI Engine** — ✅ Done (Phase 3); real LLM backend (opt-in, `DAP_LLM_API_KEY`) with heuristic fallback; real usage counters now in `/metrics`
+6. **Networkability** — ✅ Done (Phase 5); production TLS via Caddy + Let's Encrypt (built 2026-08-24)
 7. **Git repository** — ✅ Published 2026-08-23 at `https://github.com/mltmacster/devops-agentic-platform`; CI (3.12/3.13 matrix) active and green
+8. **Production deploy** — Stack built and compose-validated; first deploy needs a host with a public domain (A-record → Caddy HTTP-01 → Let's Encrypt) + `.env` (`DAP_JWT_SECRET`, `DAP_PUBLIC_HOST`, `POSTGRES_PASSWORD`)
+9. **Live sandbox verification** — Podman/gVisor backends wired and unit-tested with a fake podman binary; verify real containers on a podman host (`DAP_SANDBOX_RUNTIME=auto`)
 
 ## Future Considerations (Noted)
 

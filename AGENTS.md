@@ -23,6 +23,10 @@ The `.vault/` directory is the project's official knowledge repository. It persi
 3. **Document all fixes** in `.vault/SOLUTIONS.md` with verification steps
 4. **Never auto-purge** old content — nothing is automatically deleted
 5. **All changes must be traced** back to a specific session/commit
+6. **Vault schema files** (`VAULT_CONFIG.yaml`, `VAULT_COORDINATOR.yaml`,
+   `VAULT_DEPLOYMENT.yaml`) may only be changed with explicit user approval,
+   and every change must carry a **version header** noting what changed and why
+   (the 2026-08-24 consistency pass set this precedent)
 
 ### Quick Commands
 ```bash
@@ -49,12 +53,14 @@ cp old-code/ .vault/archive/YYYY-MM-DD_<component>/
 ```
 devops-agentic-platform/
 ├── .vault/                           # ← Knowledge repository (protected)
-│   ├── VAULT_CONFIG.yaml               # Schema definitions (READ-ONLY)
-│   ├── VAULT_COORDINATOR.yaml        # Coordination rules (READ-ONLY) 
+│   ├── VAULT_CONFIG.yaml               # Schema definitions (v1.1, READ-ONLY w/o approval)
+│   ├── VAULT_COORDINATOR.yaml        # Coordination rules (v1.1, READ-ONLY w/o approval)
+│   ├── VAULT_DEPLOYMENT.yaml         # Roadmap & pipeline (v2.0.0; v1 in archive/)
 │   ├── LIFECYCLE_PROTOCOL.md         # Artifact lifecycle rules
-│   ├── VAULT_OVERVIEW.md             # Current architecture state
+│   ├── ARCHITECTURE.md               # Current architecture state (v1.1)
+│   ├── VAULT_OVERVIEW.md             # Architecture overview + service matrix
 │   ├── SNAPSHOT_LOG.md               # All snapshots tracked here
-│   ├── SOLUTIONS.md                  # 27 documented solutions
+│   ├── SOLUTIONS.md                  # 33 documented solutions (28–33 = 2026-08-24)
 │   ├── snapshots/                    # UI/code state at key moments
 │   ├── designs/                      # Architecture diagrams, ADRs
 │   ├── scripts/                      # run_computing.sh, run_all_tests.sh, validate_vault.sh
@@ -63,13 +69,16 @@ devops-agentic-platform/
 │   └── archive/                      # Retired components + RETIREMENT.md
 ├── src/                              # Source code
 ├── templates/                        # Infrastructure templates  
-├── tests/                            # Test suite (187 tests, run with TESTING=1)
-│   ├── test_auth_api.py              # auth/RBAC tests ✅
+├── tests/                            # Test suite (219 tests, run with TESTING=1)
+│   ├── test_auth_api.py              # legacy auth/RBAC tests ✅
+│   ├── test_auth_users.py            # real user store: register/login/JWT/strict+dev ✅
 │   ├── test_sandbox_api.py           # sandbox lifecycle tests ✅
 │   ├── test_sandbox_engine.py        # sandbox engine + state machine tests ✅
+│   ├── test_sandbox_backends.py      # null/Podman/gVisor backends + failure parking ✅
 │   ├── test_workspace_api.py         # workspace CRUD + list tests ✅
 │   ├── test_ide_api.py               # IDE config/LSP tests ✅
 │   ├── test_observability_api.py     # Prometheus metrics tests ✅
+│   ├── test_llm_metrics.py           # real LLM token/latency values in /metrics ✅
 │   ├── test_network.py               # Phase 5 routing/DNS/SSL tests ✅
 │   ├── test_agentic_engine.py        # Agent + orchestrator tests ✅
 │   ├── test_agentic_api.py           # Agentic API tests ✅
@@ -203,7 +212,7 @@ Run `bash .vault/scripts/run_computing.sh audit`, then confirm:
 - Windows-compatible: platform-branched process discovery (PowerShell `Get-CimInstance`), `taskkill //PID`, CRLF-safe parsing, `PY_CMD` interpreter resolution
 - Verified 2026-08-23: `full` cycle killed 2/2 DAP processes (0 remaining), cleared caches, correct disk/memory/port report
 
-### ✅ Phase 5: Networkability & Production Readiness — COMPLETE
+### ✅ Phase 5: Networkability & Production Readiness — COMPLETE (2026-08-24: + compose production stack, Caddy/Let's Encrypt TLS, strict auth)
 - **URL formatting utilities** (Phase 1) ✅
 - **Sandbox network URLs in API responses** (Phase 1) ✅  
 - **Public endpoint routing** (`src/network/public_routing.py`) ✅
@@ -290,7 +299,38 @@ Run `bash .vault/scripts/run_computing.sh audit`, then confirm:
   (Solution 26) — was an intermittently flaky determinism test
 - **Live processes** (intentionally kept for user preview, venv python):
   DAP API on 8001, dashboard on 8081. Verify with `netstat -ano | grep LISTENING`.
-- **Open, awaiting user approval**: `.vault/VAULT_DEPLOYMENT.yaml` fix
-  (YAML syntax error + stale phase plan) — vault-protected, not changed unilaterally
-- **Next goals** (see `HANDOFF.md`): real Podman/gVisor sandbox execution behind the
-  engine stub; remote/production deployment; optional LLM token/latency wiring into metrics
+
+## 📝 Session Notes (2026-08-24 — Production Build + User-Approved Vault Consistency Pass)
+
+- **Tests: 218/219 passing** (`TESTING=1 .venv/Scripts/python.exe -m pytest tests/ -q`;
+  the 1 skip is the Windows-only fake-podman test — it runs on CI Linux). Suite grew 187 → 219.
+- **User-approved scope, all delivered** (SOLUTIONS.md Solutions 28–33 for the fixes discovered along the way):
+  1. **Real sandbox execution backends** — `src/sandbox_engine/backends.py` (null /
+     Podman / gVisor via `DAP_SANDBOX_RUNTIME=auto|podman|runsc|null`, `--network none`,
+     failed op → ERROR parking); surfaced in `/health` + `/api/sandbox/status`
+     (SOLUTIONS 31: no-container branch must park ERROR)
+  2. **Production deployment** — `templates/docker/Dockerfile` + `DOCKERCOMPOSE_PROD.yml`
+     (postgres + api + dashboard + Caddy/Let's Encrypt) + `Caddyfile`; `init_db()` in
+     app lifespan; `docs/DEPLOYMENT_GUIDE.md` §0 quick start (SOLUTION 33: auth lookup
+     degrades to unknown-user when the identity store isn't initialized)
+  3. **Real auth persistence** — `users` table, PBKDF2 (600k), HS256 JWT pairs,
+     `DAP_AUTH_STRICT=1` fail-closed; dev default stays fail-open (SOLUTION 30: the
+     dev-fallback JWT key was a str → TypeError on every real token)
+  4. **Real LLM metrics** — `dap_ai_tokens_total` / `dap_ai_requests_total` /
+     `dap_ai_latency_seconds_*` fed from the `LLMStats` registry; 5 new tests
+  5. **Vault consistency pass** — `VAULT_DEPLOYMENT.yaml` v1 retired to
+     `archive/2026-08-24_vault-deployment-v1/` (+RETIREMENT.md) and replaced by valid
+     v2.0.0; versioned fixes to `VAULT_COORDINATOR.yaml` v1.1, `VAULT_CONFIG.yaml` v1.1,
+     `ARCHITECTURE.md` v1.1, `.gitkeep-README.md` v1.1, `validate_vault.sh` v1.1
+     (path/interpreter/REQUIRED_FILES); `.gitkeep-README.md` count fixed 15 → 33.
+     `bash .vault/scripts/validate_vault.sh` → passed.
+- **Learnings**: never use async autouse fixtures in this repo (SOLUTION 32);
+  vault YAML must stay checkbox-free and be `yaml.safe_load`-validated (SOLUTION 28);
+  all vault file replacements show their version header + prior-version location.
+- **Live processes**: both preview servers (8001/8081) running on venv python;
+  restart after this commit picks up the new endpoints (`/auth/register`, sandbox
+  `runtime`, real AI metrics). Caches cleared manually (`.pytest_cache`, `__pycache__`)
+  — `run_computing.sh cleanup` was NOT used (it would kill the previews).
+- **Published**: commit + push to `origin/main`; CI (3.12/3.13) re-verified green.
+- **Next** (see `HANDOFF.md`): first real production deploy (host + domain),
+  live podman sandbox verification, optional RBAC integration tests.

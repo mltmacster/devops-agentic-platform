@@ -2,6 +2,13 @@
 # 🏛️ PROJECT VAULT — DO NOT MODIFY BY AGENTS
 # =============================================
 
+> **Version: 1.1 — 2026-08-24 consistency pass (user-approved).**
+> v1 (2026-08-21) is preserved in `.vault/snapshots/2026-08-24-production/vault/`.
+> Changes: removed stale `ARCHITECTURE.md.bak` reference, updated the directory
+> tree to the actual layout, current-state section now matches the codebase
+> (all phases complete, 219 tests), snapshot/solution examples aligned to
+> actual practice (`YYYY-MM-DD-<name>/` dirs, single-file SOLUTIONS.md).
+
 **WARNING:** This directory is the project's official knowledge repository.
 Agents and automation systems MUST NOT:
 - Delete files in this directory
@@ -21,13 +28,18 @@ This vault is maintained for:
 
 ```
 .vault/
-├── VAULT_CONFIG.yaml           # Schema definitions (READ-ONLY)
-├── VAULT_COORDINATOR.yaml      # Cross-cutting coordination rules (READ-ONLY)
-├── LIFECYCLE_PROTOCOL.md       # Artifact lifecycle rules (READ-ONLY)
-├── ARCHITECTURE.md             # Current architecture state
-├── ARCHITECTURE.md.bak         # Previous architecture state
+├── VAULT_CONFIG.yaml           # Schema definitions (v1.1)
+├── VAULT_COORDINATOR.yaml      # Cross-cutting coordination rules (v1.1)
+├── VAULT_DEPLOYMENT.yaml       # Roadmap & pipeline (v2.0.0; v1 archived 2026-08-24)
+├── LIFECYCLE_PROTOCOL.md       # Artifact lifecycle rules
+├── ARCHITECTURE.md             # Current architecture state (this file)
+├── VAULT_OVERVIEW.md           # Architecture overview + service status matrix
 ├── SNAPSHOT_LOG.md             # Snapshot tracking
-└── .../                        # Artifact-specific directories
+├── SOLUTIONS.md                # Single-file solution library (numbered entries)
+├── archive/                    # Retired components, each with RETIREMENT.md
+├── snapshots/                  # Pre-change file snapshots, YYYY-MM-DD-<name>/
+├── designs/  docs/  metrics/   # Design docs, technical docs, benchmarks
+└── scripts/  certs/  logs/     # run_computing.sh, validate_vault.sh, run_all_tests.sh
 ```
 
 ---
@@ -36,10 +48,9 @@ This vault is maintained for:
 
 ### 1. Code Snapshot (After Major Changes)
 ```yaml
-# .vault/snapshots/YYYY-MM-DD-HH/MM/<service>/snap_<feature>.md
-- Description: [what changed]
-- Files Changed: [list paths]
-- Key Diff Points: [bullet points]
+# .vault/snapshots/YYYY-MM-DD-<name>/  (e.g. 2026-08-24-production/)
+# Copy pre-change versions of every file you touch, preserving relative paths,
+# then add an entry to SNAPSHOT_LOG.md.
 ```
 
 ### 2. Design Document (Architecture Change)  
@@ -52,16 +63,14 @@ This vault is maintained for:
 ### Alternatives Considered: [what we rejected & why]
 ```
 
-### 3. Troubleshooting Solution  
+### 3. Troubleshooting Solution
 ```markdown
-# .vault/docs/solutions/YYYY-MM-DD_ISSUE.md
+# .vault/SOLUTIONS.md — append as "## Solution <next-number>: <title>"
 
-## Issue: [what broke]
-## Root Cause: [why it broke]  
-## Solution: [how to fix it]
-## Verification Steps:
-1. [step 1]
-2. [step 2]
+**Problem**: [what broke]
+**Root Cause**: [why it broke]
+**Solution**: [how to fix it]
+**Verification**: [steps proving the fix — always required]
 ```
 
 ### 4. Deprecated Component
@@ -82,14 +91,23 @@ This vault is maintained for:
 
 ---
 
-## 📋 Current Architecture State
+## 📋 Current Architecture State (verified 2026-08-24 — all 219 tests passing)
 
 ### Services Implemented:
-- ✅ Auth Service (RBAC, JWT) — **13 tests passing**
-- ✅ Workspace Orchestrator — **11 tests passing**  
-- ✅ Sandbox Lifecycle Manager — **11 tests passing**
+- ✅ Auth Service — RBAC engine + real persistence (users table, PBKDF2, HS256 JWT, `DAP_AUTH_STRICT` fail-closed mode) — **28 tests**
+- ✅ Workspace Orchestrator — CRUD + deterministic list — **15 tests**
+- ✅ Sandbox Lifecycle Manager — state machine + API — **15 API + 39 engine tests**
+- ✅ Sandbox Execution Backends — null / Podman / gVisor (`DAP_SANDBOX_RUNTIME`), `--network none` — **12 tests**
+- ✅ IDE Core — WebSocket `/ws/{session_id}` + LSP protocol + REST config — **11 tests**
+- ✅ Observability Collector — Prometheus `/metrics` (real LLM token/latency counters), Grafana JSON, health — **28 + 5 metrics tests**
+- ✅ Agentic AI Engine — 3 agents + orchestrator + opt-in LLM backend (`LLMStats`) — **24 + 22 tests**
+- ✅ Network Edge — public routing, DNS config, SSL manager, URL formatter — **20 tests**
 
-### Pending:
-- IDE WebSocket server (Monaco Editor integration)
-- Observability metrics collector (Prometheus)
-- Dashboard API (Grafana connection)
+### Production Readiness (2026-08-24):
+- `src/main.py` lifespan runs `init_db()` at startup (Postgres bootstrap)
+- `templates/docker/` — production Dockerfile, `DOCKERCOMPOSE_PROD.yml` (postgres + api + dashboard + Caddy/Let's Encrypt), Caddyfile
+
+### Pending (next):
+- First real production deploy (needs a host with a public domain → Caddy TLS)
+- Live podman sandbox verification on a runtime host
+- Optional: distributed tracing (OTel/Jaeger), rate limiting & quotas

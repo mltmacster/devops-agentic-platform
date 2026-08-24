@@ -19,11 +19,64 @@ import concurrent.futures
 import json
 import logging
 import os
-from dataclasses import dataclass
+import threading
+import time
+from dataclasses import dataclass, field
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+
+# ─── Process-wide usage stats (surfaced in observability /metrics) ───
+
+MAX_LATENCY_SAMPLES = 10_000
+
+
+@dataclass
+class LLMStats:
+    """Cumulative LLM usage counters (thread-safe)."""
+
+    requests_total: int = 0
+    tokens_total: int = 0
+    errors_total: int = 0
+    latencies: list = field(default_factory=list)  # per-call seconds, capped
+    lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    def record_call(self, latency_seconds: float, prompt_tokens: int, completion_tokens: int, ok: bool):
+        with self.lock:
+            self.requests_total += 1
+            self.latencies.append(latency_seconds)
+            if len(self.latencies) > MAX_LATENCY_SAMPLES:
+                self.latencies = self.latencies[-MAX_LATENCY_SAMPLES:]
+            self.tokens_total += prompt_tokens + completion_tokens
+            if not ok:
+                self.errors_total += 1
+
+    def snapshot(self) -> dict:
+        with self.lock:
+            return {
+                "requests_total": self.requests_total,
+                "tokens_total": self.tokens_total,
+                "errors_total": self.errors_total,
+                "latencies": list(self.latencies),
+            }
+
+
+_llm_stats = LLMStats()
+
+
+def get_llm_stats() -> LLMStats:
+    return _llm_stats
+
+
+def reset_llm_stats() -> None:
+    """Reset all counters (tests)."""
+    with _llm_stats.lock:
+        _llm_stats.requests_total = 0
+        _llm_stats.tokens_total = 0
+        _llm_stats.errors_total = 0
+        _llm_stats.latencies.clear()
 
 
 class LLMError(Exception):
@@ -79,6 +132,7 @@ class LLMClient:
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
 
+        started = time.monotonic()
         try:
             async with httpx.AsyncClient(timeout=self.config.timeout_seconds) as client:
                 resp = await client.post(
@@ -90,19 +144,31 @@ class LLMClient:
                     json=payload,
                 )
         except httpx.HTTPError as exc:
+            _llm_stats.record_call(time.monotonic() - started, 0, 0, ok=False)
             raise LLMError(f"LLM request failed: {exc}") from exc
 
         if resp.status_code != 200:
+            _llm_stats.record_call(time.monotonic() - started, 0, 0, ok=False)
             raise LLMError(f"LLM returned HTTP {resp.status_code}: {resp.text[:300]}")
 
         try:
             data = resp.json()
             content = data["choices"][0]["message"]["content"]
+            usage = data.get("usage", {})
         except (json.JSONDecodeError, KeyError, IndexError, TypeError) as exc:
+            _llm_stats.record_call(time.monotonic() - started, 0, 0, ok=False)
             raise LLMError(f"Unexpected LLM response shape: {exc}") from exc
 
         if not isinstance(content, str) or not content.strip():
+            _llm_stats.record_call(time.monotonic() - started, 0, 0, ok=False)
             raise LLMError("LLM returned empty content")
+
+        _llm_stats.record_call(
+            time.monotonic() - started,
+            int(usage.get("prompt_tokens", 0) or 0),
+            int(usage.get("completion_tokens", 0) or 0),
+            ok=True,
+        )
         return content
 
     async def complete_json(self, system: str, user: str) -> dict:

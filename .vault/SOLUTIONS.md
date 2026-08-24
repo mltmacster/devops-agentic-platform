@@ -601,3 +601,142 @@ environment, so "it works on my machine" was the only guarantee.
 - Both live services restarted on the venv interpreter (`start_dap.py` with
   `TESTING=1` on 8001, `dap_dashboard.py` on 8081) and live-verified — the venv is
   the proven runner for local dev and preview.
+
+---
+
+## Solution 28: `.vault/VAULT_DEPLOYMENT.yaml` — Invalid YAML + Stale Roadmap → Retired v1, Rewrote v2
+**Date**: 2026-08-24 (session: production build; user-approved vault consistency pass)
+
+**Problem**: The vault's deployment/roadmap file failed `yaml.safe_load` and its
+roadmap was frozen at 2026-08-21 (Phases 2/3/4 listed as not-started while 2/3/5
+are complete). The file was written 2026-08-21 with markdown task-list checkboxes
+embedded in YAML list items.
+
+**Root cause**: Format-boundary violation — `- [ ] task` followed by mis-indented
+`status:`/`files_needed:` keys. In YAML, `[ ]` is an *empty flow sequence*, and
+keys indented under a scalar-valued `phase_2:` line are a block-mapping context
+error. The file was never machine-validated after writing, so the error persisted
+undetected for 3 days.
+
+**Solution** (user-approved; versioned, nothing deleted):
+1. Pre-change copy preserved in `.vault/snapshots/2026-08-24-production/vault/` (byte-identical, diff-verified).
+2. `mv` to `.vault/archive/2026-08-24_vault-deployment-v1/` + `RETIREMENT.md` with full RCA + mitigations.
+3. New v2.0.0 at vault root — valid YAML, version header explaining the replacement, current phases (all 5 complete), current pipeline (compose deploy stage), structured `next_goals`, checklist as plain-text items (no checkbox syntax in YAML).
+4. Same pass fixed the other stale vault files, each with a version header:
+   - `VAULT_COORDINATOR.yaml` v1.1: scope typo `src/api/*, src/src/*` → `src/`; date typo `YYYYY-MM-DD` → `YYYY-MM-DD`; snapshot + solution rules aligned to actual practice (`YYYY-MM-DD-<name>/` dirs; single-file SOLUTIONS.md).
+   - `VAULT_CONFIG.yaml` v1.1: stale "Git-ignored" comment (the vault IS git-tracked; only `logs/`/`certs/` are ignored); archive/snapshot schemas corrected to the actual layouts.
+   - `ARCHITECTURE.md` v1.1: removed reference to nonexistent `ARCHITECTURE.md.bak`; current-state section updated to reality (all phases complete, 219 tests).
+   - `.gitkeep-README.md` v1.1: "15 solutions" → actual count; `python` → `bash` for the validator; `cp` → `mv` for archival (move, never delete); stale snapshot example.
+
+**Verification**:
+- `python -c "import yaml; yaml.safe_load(open('.vault/VAULT_DEPLOYMENT.yaml'))"` → OK (v2); archived v1 fails as expected (preserved as-is).
+- `bash .vault/scripts/validate_vault.sh` → all required files found, all YAML valid, validation passed.
+
+**Prevention (for the next build)**: checklists live in markdown; YAML keeps only
+structured fields; every vault YAML is `yaml.safe_load`-validated before commit;
+roadmap updates in the same commit that completes a phase.
+
+## Solution 29: `validate_vault.sh` — Path Resolved to `.vault/.vault`, Wrong Interpreter, Incomplete File List
+**Date**: 2026-08-24
+
+**Problem**: The vault validator could not be trusted: its `VAULT_DIR` variable
+resolved to `.vault/.vault`, it invoked `python3` (the Microsoft Store stub —
+broken on this machine), and `VAULT_DEPLOYMENT.yaml` was missing from
+`REQUIRED_FILES`.
+
+**Root cause**: The script lives in `.vault/scripts/`, so `$(dirname $0)/..` is
+already `.vault` — appending `/.vault` doubled it. `python3` was assumed to exist
+(as on Linux) but on this Windows box it is the non-functional Store stub.
+
+**Solution** (v1.1): `SCRIPT_DIR` → `VAULT_DIR = dirname/..` (the actual vault)
+→ `cd` to repo root so the CWD-relative globs work from anywhere; interpreter
+auto-detected (`python`, falling back to `python3`); `VAULT_DEPLOYMENT.yaml` added
+to `REQUIRED_FILES`; the YAML check now prints pass/fail per file and counts
+failures into the error total (previously a swallowed-stdout `&&` chain).
+
+**Verification**: `bash .vault/scripts/validate_vault.sh` from the repo root → all
+files found, all 3 vault YAMLs valid, directory structure OK, exit 0.
+
+## Solution 30: `get_jwt_secret()` Returned a `str` on the Dev Fallback Path → `TypeError` Signing Every Real Token
+**Date**: 2026-08-24
+
+**Problem**: First run of the new auth tests: `TypeError: key: expected bytes or
+bytearray, but got 'str'` inside `hmac.new()` — every code path that signs a token
+for a *registered* user crashed. Mock/dev tokens (plain strings, unsigned) worked,
+which masked the bug until a real user logged in.
+
+**Root cause**: `os.environ.get(DAP_JWT_SECRET, "").encode() or _DEV_SECRET` —
+when the env var is unset, `"".encode()` is `b""`, which is falsy, so the `or`
+fell through to `_DEV_SECRET`, a **str** literal. `hmac` requires bytes.
+
+**Solution**: `_DEV_SECRET` is now a bytes literal (`b"..."`); `get_jwt_secret()`
+returns `secret.encode() if secret else _DEV_SECRET` — always bytes, in both modes.
+
+**Verification**: `tests/test_auth_users.py` — JWT roundtrip (sign → decode →
+tamper-reject) plus all register/login/refresh/me tests pass; full suite 218/219
+(1 skip = Windows-only fake-podman test, covered on CI Linux).
+
+## Solution 31: Sandbox Manager Left Sandboxes RUNNING When a Backend Op Had No Container to Act On
+**Date**: 2026-08-24
+
+**Problem**: With a real backend whose `create()` failed (container_id=None),
+`start_sandbox()` reported the sandbox RUNNING. The state machine had already
+transitioned CREATING→RUNNING, and `_backend_op()`'s no-container branch logged
+an error and returned `False` *without* setting the ERROR state.
+
+**Root cause**: The failure bookkeeping only lived in the `ok = backend.op(...)`
+branch; the `container_id is None` branch returned early, skipping the
+`sandbox.status = SandboxState.ERROR` parking step.
+
+**Solution**: The no-container branch now sets `sandbox.status = SandboxState.ERROR`
+before returning False — a sandbox with no container can never claim a healthy
+state, and every subsequent op keeps it parked (DELETE still cleans it up).
+
+**Verification**: `tests/test_sandbox_backends.py::test_manager_backend_failure_parks_in_error`
+(create fails → ERROR; start keeps it ERROR; delete removes it); full sandbox suite
+green (engine 39 + backends 12 + API 15).
+
+## Solution 32: Async Autouse Fixture Broke Sync Tests Under pytest-asyncio Strict Mode
+**Date**: 2026-08-24
+
+**Problem**: The new `tests/test_auth_users.py` used an `@pytest.fixture(autouse=True)
+async def clean_db()` to reset the DB. Every test in the module errored at setup:
+`'test_...' requested an async fixture ... with no plugin or hook that handled it`
+— pytest does not natively support a *sync* test depending on an async fixture,
+and the three credential unit tests in the file are sync.
+
+**Root cause**: pytest-asyncio (1.4, strict mode) only handles async fixtures for
+async tests; an autouse async fixture still applies to sync tests, which core
+pytest then rejects.
+
+**Solution**: Dropped the fixture; each async test calls a small `await _fresh_db()`
+helper (`drop_db(); init_db()`) inline — exactly the convention already used by
+`test_workspace_api.py` and `test_sandbox_api.py`. Sync tests need no DB.
+
+**Verification**: All 13+2 tests in `test_auth_users.py` pass; full suite green.
+
+**Rule for future agents**: never write async autouse fixtures in this repo;
+reset shared state per-test, inline, in async tests only.
+
+## Solution 33: Auth Routes 500'd on an Uninitialized DB — `UserRepository.get_by_email` Now Degrades to "Unknown User"
+**Date**: 2026-08-24
+
+**Problem**: The legacy `tests/test_auth_api.py::test_login_returns_tokens` started
+failing with a SQLAlchemy `OperationalError` (`no such table: users`). The login
+endpoint now consults the real user store, but that legacy suite runs before any
+test calls `init_db()` (and ASGITransport never runs app lifespan), so the first
+query hit a DB file with no `users` table.
+
+**Root cause**: The new DB-backed lookup assumed the schema existed. Fresh
+environments (CI: no `dap_test.db`; local: a DB created before the `User` model
+existed) have no `users` table until `init_db()` runs.
+
+**Solution**: `get_by_email()` catches `OperationalError`/`ProgrammingError` and
+returns `None` (identity store unavailable ⇒ unknown user). Dev mode then keeps its
+legacy fail-open mock tokens (13 legacy auth tests pass unchanged); strict mode
+cannot verify anyone and fails closed with 401 — the safe production semantics.
+In production, `src/main.py` lifespan runs `init_db()` at startup, so the table
+always exists and the catch is dormant.
+
+**Verification**: Full suite green (218 passed, 1 skipped) with a stale `dap_test.db`
+present; legacy auth tests pass in the order CI runs them; fresh-DB run also green.

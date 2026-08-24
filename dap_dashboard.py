@@ -12,11 +12,12 @@ The dashboard auto-refreshes every 5 seconds.
 """
 
 import argparse
+import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.request import urlopen
 
 # ─── Config ──────────────────────
-DAP_API = "http://localhost:8001"  # <-- DAP server port
+DAP_API = os.environ.get("DAP_API_URL", "http://localhost:8001")  # override for containers
 
 
 # ─── HTML Dashboard Template ────────────────

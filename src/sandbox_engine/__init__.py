@@ -4,6 +4,13 @@ Provides the lifecycle state machine (single source of truth for legal
 state transitions) and an in-memory VM manager for local development.
 """
 
+from .backends import (
+    DEFAULT_IMAGE,
+    ExecutionBackend,
+    NullBackend,
+    PodmanBackend,
+    select_backend,
+)
 from .vm_manager import (
     TRANSITIONS,
     SandboxInstance,
@@ -16,6 +23,10 @@ from .vm_manager import (
 )
 
 __all__ = [
+    "DEFAULT_IMAGE",
+    "ExecutionBackend",
+    "NullBackend",
+    "PodmanBackend",
     "TRANSITIONS",
     "SandboxInstance",
     "SandboxLifecycleManager",
@@ -23,5 +34,6 @@ __all__ = [
     "SandboxState",
     "can_transition",
     "get_sandbox_manager",
+    "select_backend",
     "state_from_str",
 ]

@@ -13,6 +13,8 @@ from typing import Dict, Optional
 import uuid
 import logging
 
+from .backends import DEFAULT_IMAGE, ExecutionBackend, NullBackend, select_backend
+
 logger = logging.getLogger(__name__)
 
 
@@ -82,24 +84,31 @@ class SandboxInstance:
     status: SandboxState = SandboxState.CREATING
     tier: str = "basic"
     resources: SandboxResourceQuota = field(default_factory=SandboxResourceQuota)
+    runtime: str = "null"                 # active execution backend name
+    container_id: Optional[str] = None    # container id (None = real backend create failed)
 
     def __str__(self) -> str:
-        return f"Sandbox({self.id[:8]}..., status={self.status.name}, tier={self.tier})"
+        return f"Sandbox({self.id[:8]}..., status={self.status.name}, tier={self.tier}, runtime={self.runtime})"
 
 
 class SandboxLifecycleManager:
     """Manages the full lifecycle of Lite VM instances.
 
-    This is a simplified in-memory manager — in production, this would
-    communicate with Podman/Kubernetes and track state in PostgreSQL.
-    All state changes are guarded by the TRANSITIONS state machine.
+    In-memory registry + pluggable execution backend (podman / gVisor /
+    null). All state changes are guarded by the TRANSITIONS state machine;
+    a failed backend call parks the sandbox in ERROR rather than raising.
     """
 
-    def __init__(self):
+    def __init__(self, backend: Optional[ExecutionBackend] = None):
+        self.backend = backend if backend is not None else select_backend()
         self._sandboxes: Dict[str, SandboxInstance] = {}
 
+    @property
+    def runtime(self) -> str:
+        return self.backend.name
+
     def create_sandbox(self, tier: str = "basic") -> SandboxInstance:
-        """Create a new sandbox instance."""
+        """Create a new sandbox instance (container created, not started)."""
         quota_map = {
             "basic": SandboxResourceQuota(cpu_cores=1.0, memory_gb=2.0, disk_gb=10.0),
             "pro": SandboxResourceQuota(cpu_cores=4.0, memory_gb=8.0, disk_gb=50.0),
@@ -108,19 +117,46 @@ class SandboxLifecycleManager:
         }
 
         quota = quota_map.get(tier, SandboxResourceQuota())
-        instance = SandboxInstance(tier=tier, resources=quota)
+        instance = SandboxInstance(tier=tier, resources=quota, runtime=self.backend.name)
+
+        container_id = self.backend.create(
+            instance.id, DEFAULT_IMAGE, quota.memory_gb, quota.cpu_cores
+        )
+        instance.container_id = container_id
+        if container_id is None:
+            instance.status = SandboxState.ERROR
+            self._sandboxes[instance.id] = instance  # keep trackable/deletable
+            logger.error("Backend %s failed to create sandbox %s", self.backend.name, instance.id)
+            return instance
 
         self._sandboxes[instance.id] = instance
         logger.info("Created sandbox: %s", instance)
 
-        # In production: Podman create + podman start
-        # self._podman_create(instance)
-
         return instance
+
+    def _backend_op(self, sandbox: SandboxInstance, op: str) -> bool:
+        """Run a backend lifecycle op, park in ERROR on failure.
+
+        container_id is None only when a real backend's create failed —
+        every op on such a sandbox fails (the null backend always has a
+        sentinel container id, so this branch never fires for it).
+        """
+        if sandbox.container_id is None:
+            sandbox.status = SandboxState.ERROR
+            logger.error("Backend %s has no container for sandbox %s", self.backend.name, sandbox.id)
+            return False
+        ok = getattr(self.backend, op)(sandbox.container_id)
+        if not ok:
+            sandbox.status = SandboxState.ERROR
+            logger.error("Backend %s op %s failed for sandbox %s",
+                          self.backend.name, op, sandbox.id)
+        return ok
 
     def start_sandbox(self, sandbox_id: str) -> Optional[SandboxInstance]:
         """Start a stopped/suspended/errored sandbox."""
         sandbox = self._transition(sandbox_id, SandboxState.RUNNING)
+        if sandbox and not self._backend_op(sandbox, "start"):
+            return sandbox
         if sandbox:
             logger.info("Started sandbox: %s", sandbox)
         return sandbox
@@ -128,6 +164,8 @@ class SandboxLifecycleManager:
     def stop_sandbox(self, sandbox_id: str) -> Optional[SandboxInstance]:
         """Gracefully stop a running sandbox."""
         sandbox = self._transition(sandbox_id, SandboxState.STOPPED)
+        if sandbox and not self._backend_op(sandbox, "stop"):
+            return sandbox
         if sandbox:
             logger.info("Stopped sandbox: %s", sandbox)
         return sandbox
@@ -135,6 +173,8 @@ class SandboxLifecycleManager:
     def suspend_sandbox(self, sandbox_id: str) -> Optional[SandboxInstance]:
         """Checkpoint and pause a running sandbox."""
         sandbox = self._transition(sandbox_id, SandboxState.SUSPENDED)
+        if sandbox and not self._backend_op(sandbox, "pause"):
+            return sandbox
         if sandbox:
             logger.info("Suspended sandbox: %s", sandbox)
         return sandbox
@@ -142,6 +182,8 @@ class SandboxLifecycleManager:
     def resume_sandbox(self, sandbox_id: str) -> Optional[SandboxInstance]:
         """Resume a suspended sandbox from checkpoint."""
         sandbox = self._transition(sandbox_id, SandboxState.RUNNING)
+        if sandbox and not self._backend_op(sandbox, "unpause"):
+            return sandbox
         if sandbox:
             logger.info("Resumed sandbox: %s", sandbox)
         return sandbox
@@ -159,7 +201,9 @@ class SandboxLifecycleManager:
             )
             return None
 
-        # In production: podman rm --rm <id>
+        if sandbox.container_id is not None:
+            self.backend.remove(sandbox.container_id)
+
         del self._sandboxes[sandbox_id]
         logger.info("Deleted sandbox: %s", sandbox_id)
 

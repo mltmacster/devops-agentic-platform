@@ -70,6 +70,20 @@
 - **Tests**: 187/187 passing (system python 3.14.6 ×2, venv ×1)
 - **Snapshot Dir**: `.vault/snapshots/2026-08-24-next-phase/`
 
+### [2026-08-24 14:30] PRODUCTION | SNAPSHOT | Production build — sandbox backends, real auth, LLM metrics, deploy stack + user-approved vault consistency pass
+- **Description**: Completed the three open next-steps from the prior handoff: (1) real sandbox execution backends (null/Podman/gVisor, `DAP_SANDBOX_RUNTIME`, `--network none`, ERROR parking on failure); (2) production deployment artifacts (Dockerfile, DOCKERCOMPOSE_PROD.yml, Caddyfile) + real auth persistence (`users` table, PBKDF2, HS256 JWT, `DAP_AUTH_STRICT`) + `init_db()` in app lifespan; (3) real LLM token/latency counters into `/metrics` + `/metrics/summary`. Then the user-approved vault consistency pass: retired `VAULT_DEPLOYMENT.yaml` v1 (invalid YAML + stale roadmap) into `archive/2026-08-24_vault-deployment-v1/` with RETIREMENT.md, wrote v2.0.0, versioned fixes to VAULT_COORDINATOR/CONFIG, ARCHITECTURE, .gitkeep-README, validate_vault.sh; SOLUTIONS.md Solutions 28–33.
+- **Files Changed**:
+  - NEW: `src/sandbox_engine/backends.py`, `src/api/auth/credentials.py`, `src/database/user_repo.py`, `templates/docker/Dockerfile`, `templates/docker/DOCKERCOMPOSE_PROD.yml`, `templates/docker/Caddyfile`, `tests/test_auth_users.py` (15), `tests/test_sandbox_backends.py` (12), `tests/test_llm_metrics.py` (5)
+  - `src/sandbox_engine/vm_manager.py` (+`__init__.py`) — backend wiring, runtime/container_id, ERROR parking
+  - `src/api/auth/main.py` — register/real login/refresh-rotation/`/me`, strict & dev modes
+  - `src/api/sandbox/main.py` (runtime in status), `src/main.py` (lifespan init_db, runtime in /health), `src/agentic/llm.py` (LLMStats), `src/api/observability/main.py` (real AI values), `src/database/models.py` (User), `dap_dashboard.py` (`DAP_API_URL` env), `templates/docker/Dockerfile.template` (stale path fix)
+  - Vault: `VAULT_DEPLOYMENT.yaml` v1→archive + v2, `VAULT_COORDINATOR.yaml` v1.1, `VAULT_CONFIG.yaml` v1.1, `ARCHITECTURE.md` v1.1, `.gitkeep-README.md` v1.1, `scripts/validate_vault.sh` v1.1, `SOLUTIONS.md` (28–33), `VAULT_OVERVIEW.md`
+  - Docs: `AGENTS.md`, `HANDOFF.md`, `.env.template`, `docs/DEPLOYMENT_GUIDE.md`
+- **Author**: Claude Bionic
+- **Tests**: 218/219 passing (1 skip = Windows-only fake-podman test; runs on CI Linux) — `TESTING=1 .venv/Scripts/python.exe -m pytest tests/ -q`
+- **Vault validation**: `bash .vault/scripts/validate_vault.sh` → passed (all YAML valid)
+- **Snapshot Dir**: `.vault/snapshots/2026-08-24-production/` (33 pre-change files)
+
 ### [2026-08-23 21:45] FRAMEWORK-AUDIT | SNAPSHOT | Full framework & codebase audit — dead import fix, dead module archival
 - **Description**: Complete audit of framework, modules, dependencies, databases, scripts, docs, and live server. Fixed the `AsyncQueuePool` dead import in the database layer (500s on all DB routes in production mode), archived 2 dead modules, aligned requirements pins, added missing `__init__.py` files, gitignored `dap_test.db`. Details: SOLUTIONS.md Solution 21.
 - **Files Changed**:
@@ -94,3 +108,4 @@
 | 2026-08-23 20:50 | ✅ Validated | 2026-08-23 | All 118 tests pass |
 | 2026-08-23 21:45 | ✅ Validated | 2026-08-23 | All 118 tests pass |
 | 2026-08-24 00:23 | ✅ Validated | 2026-08-24 | All 187 tests pass |
+| 2026-08-24 14:30 | ✅ Validated | 2026-08-24 | 218/219 (1 Windows-only skip) · vault validation passed |

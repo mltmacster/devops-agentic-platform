@@ -1,0 +1,72 @@
+# =============================================
+# VAULT CONFIGURATION SCHEMA
+# =============================================
+# This file defines the structure, rules, and coordination protocols for
+# the project Vault — a protected knowledge repository that persists across sessions.
+
+vault:
+  name: "DevOps Agentic Platform Vault"
+  purpose: >
+    Persistent knowledge repository for architecture decisions, code snapshots,
+    debugging solutions, troubleshooting guides, design references, and
+    lifecycle tracking of deprecated/retired components.
+
+  # ─── Protection Rules (NON-REMOVABLE) ─────────────
+  protection:
+    immutable_paths: [".vault/"]              # Agents may not delete or modify
+    excluded_from_automation: true           # No agent runs can clean this directory
+    auto-backup_enabled: true                # Git-ignored but tracked separately
+    retention_policy: "indefinite"            # Nothing is ever purged automatically
+
+  # ─── Directory Schema ─────────────────────
+  directories:
+    .vault/archive: >
+      Deprecated & Retired artifacts with lifecycle documentation.
+      - Structure: .vault/archive/YYYY-MM-DD/<artifact-type>/
+      - Includes: Quick summary, reason for retirement, replacement path
+
+    .vault/snapshots: >
+      UI/UX and code state snapshots for preview, comparison, and regression testing.
+      - Structure: .vault/snapshots/YYYY-MM-DD-HH/MM/<service>/*
+      - Contains: Screenshots, dashboard exports, code diffs, config snapshots
+
+    .vault/designs: >
+      Architecture diagrams, UML, sequence diagrams, and design decisions.
+      - Format: Markdown with embedded Mermaid.js diagrams
+      - Linked to: ADRs (Architecture Decision Records)
+
+    .vault/scripts: >
+      Reusable troubleshooting scripts, data migration tools, debug utilities.
+      - Format: Python/Shell scripts with embedded documentation
+      - Must include: Purpose, input/output schema, exit codes
+
+    .vault/docs: >
+      Technical documentation, API references, integration guides.
+      - Cross-references all code changes and architecture decisions
+
+    .vault/metrics: >
+      Performance metrics, benchmark results, load test reports.
+      - Format: CSV/JSON exports with metadata
+      - Includes: Before/after comparisons, regression alerts
+
+  # ─── Artifact Types ─────────────────────
+  artifact_types:
+    - name: "snapshot"
+      description: "Code/UI state at a point in time"
+      required_fields: ["timestamp", "service", "description", "url_or_path"]
+
+    - name: "design"
+      description: "Architecture diagram or design document"
+      required_fields: ["author", "date", "decision_id", "mermaid_diagram"]
+
+    - name: "script"
+      description: "Reusable troubleshooting or automation script"
+      required_fields: ["purpose", "input_schema", "output_schema", "usage"]
+
+    - name: "solution"
+      description: "Documented troubleshooting solution with root cause analysis"
+      required_fields: ["problem", "root_cause", "solution", "verification_steps"]
+
+    - name: "deprecated"
+      description: "Retired component with migration path documentation"
+      required_fields: ["component", "retire_date", "reason", "replacement", "migration_steps"]

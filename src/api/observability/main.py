@@ -145,8 +145,30 @@ def _get_process_info() -> dict:
 # Prometheus Exporter — /metrics endpoint
 # ======================================================================
 
+def _ai_latency_histogram(latencies: list) -> list:
+    """Bucket recorded LLM call latencies into Prometheus histogram lines."""
+    bounds = [0.1, 0.2, 0.5, 1.0, 5.0, 10.0, 60.0]
+    lines = ["# TYPE dap_ai_latency_ms histogram",
+             "# HELP dap_ai_latency_ms Latency of agentic LLM calls (seconds)"]
+    for bound in bounds:
+        count = sum(1 for l in latencies if l <= bound)
+        lines.append(f"dap_ai_latency_seconds_bucket {bound} {count}")
+    lines.append(f"dap_ai_latency_seconds_bucket +Inf {len(latencies)}")
+    lines.append(f"dap_ai_latency_seconds_sum {sum(latencies):.4f}")
+    lines.append(f"dap_ai_latency_seconds_count {len(latencies)}")
+    return lines
+
+
 def _generate_prometheus_metrics() -> str:
-    """Generate Prometheus-compatible metrics text."""
+    """Generate Prometheus-compatible metrics text.
+
+    System gauges are live (psutil); AI token/latency metrics come from the
+    real LLM usage registry in src/agentic/llm.py (0 until LLM calls happen,
+    e.g. when DAP_LLM_API_KEY is set).
+    """
+    from src.agentic.llm import get_llm_stats
+
+    llm = get_llm_stats().snapshot()
 
     lines = []
 
@@ -156,8 +178,8 @@ def _generate_prometheus_metrics() -> str:
     lines.append("# HELP dap_sandbox_running_number_of_sandboxes Currently running sandboxes")
     lines.append("# HELP dap_sandbox_total_total Total sandboxes ever created")
     lines.append("# HELP dap_ai_tokens_total Cumulative total of tokens consumed by agentic AI")
-    lines.append("# HELP dap_ai_latency_ms Average latency in milliseconds for LSP responses")
-    lines.append("# HELP dap_ai_requests_total Total number of LSP requests processed (counter)")
+    lines.append("# HELP dap_ai_latency_ms Latency of agentic LLM calls (seconds)")
+    lines.append("# HELP dap_ai_requests_total Total number of agentic LLM requests processed")
     lines.append("# HELP dap_api_requests_total HTTP API requests by method and status")
     lines.append("# HELP dap_memory_usage_bytes Memory usage in bytes (PSUTIL)")
     lines.append("# HELP dap_cpu_usage_percent CPU usage percentage")
@@ -170,7 +192,8 @@ def _generate_prometheus_metrics() -> str:
     lines.append(f"# TYPE dap_sandbox_running_number_of_sandboxes gauge")
     lines.append("# TYPE dap_sandbox_total_total counter")
     lines.append(f"# TYPE dap_ai_tokens_total counter")
-    lines.append("# TYPE dap_api_requests_total counter")
+    lines.append("# TYPE dap_ai_requests_total counter")
+    lines.append(f"# TYPE dap_api_requests_total counter")
 
     cpu = _get_cpu_usage()
     mem = _get_memory_usage()
@@ -187,24 +210,15 @@ def _generate_prometheus_metrics() -> str:
     lines.append(f"dap_workspace_total 5")
     lines.append(f"dap_sandbox_running_number_of_sandboxes 3")
     lines.append(f"dap_sandbox_total_total 128")
-    lines.append(f"dap_ai_tokens_total 125000")
+    lines.append(f"dap_ai_tokens_total {llm['tokens_total']}")
+    lines.append(f"dap_ai_requests_total {llm['requests_total']}")
     lines.append(f"dap_api_requests_total 98473")
     lines.append(f"dap_memory_usage_bytes {int(mem['used_mb'] * 1024*1024)}")
     lines.append(f"dap_cpu_usage_percent {cpu}")
     lines.append(f"dap_disk_free_bytes {int(disk['free_gb'] * 1024*1024*1024)}")
     lines.append(f"dap_process_count_total {proc['processes']}")
 
-    # ── LSP latency histogram (histogram format) ───
-    lines.append("# TYPE dap_ai_latency_ms histogram")
-    lines.append("# HELP dap_ai_latency_ms Average latency in ms for LSP responses")
-    lines.append("dap_ai_latency_seconds_bucket 0.1 5000")
-    lines.append("dap_ai_latency_seconds_bucket 0.2 15000")
-    lines.append("dap_ai_latency_seconds_bucket 0.5 19000")
-    lines.append("dap_ai_latency_seconds_bucket 1.0 20000")
-    lines.append("dap_ai_latency_seconds_bucket 5.0 20500")
-    lines.append("dap_ai_latency_seconds_bucket 10.0 20800")
-    lines.append("dap_ai_latency_seconds_bucket 60.0 21000")
-    lines.append("dap_ai_latency_seconds_sum 4950.25")
+    lines.extend(_ai_latency_histogram(llm['latencies']))
 
     return "\n".join(lines) + "\n"
 
@@ -539,6 +553,9 @@ async def get_metrics_summary():
         dict: Metric name → value mapping with metadata
     """
 
+    from src.agentic.llm import get_llm_stats
+
+    llm = get_llm_stats().snapshot()
     cpu = _get_cpu_usage()
     mem = _get_memory_usage()
     disk = _get_disk_usage()
@@ -549,7 +566,8 @@ async def get_metrics_summary():
             "dap_workspace_total": {"value": 5, "type": "gauge", "help": "Total workspaces"},
             "dap_sandbox_running_number_of_sandboxes": {"value": 3, "type": "gauge", "help": "Running sandboxes"},
             "dap_sandbox_total_total": {"value": 128, "type": "counter", "help": "Total sandboxes created"},
-            "dap_ai_tokens_total": {"value": 125000, "type": "counter", "help": "Total AI tokens consumed"},
+            "dap_ai_tokens_total": {"value": llm["tokens_total"], "type": "counter", "help": "Total AI tokens consumed"},
+            "dap_ai_requests_total": {"value": llm["requests_total"], "type": "counter", "help": "Total agentic LLM requests"},
             "dap_api_requests_total": {"value": 98473, "type": "counter", "help": "Total API requests"},
             "dap_memory_usage_bytes": {
                 "value": int(mem["used_mb"] * 1024 * 1024),
