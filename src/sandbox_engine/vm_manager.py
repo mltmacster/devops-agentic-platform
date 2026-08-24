@@ -152,40 +152,80 @@ class SandboxLifecycleManager:
                           self.backend.name, op, sandbox.id)
         return ok
 
+    def _start_backend(self, sandbox: SandboxInstance) -> bool:
+        """Bring the container up, matching its actual state.
+
+        A paused container is unpaused; an exited/created one is started;
+        a running one is left alone.
+        """
+        st = self.backend.state(sandbox.container_id) if sandbox.container_id else ""
+        if st == "paused":
+            return self._backend_op(sandbox, "unpause")
+        if st == "running":
+            return True
+        return self._backend_op(sandbox, "start")
+
+    def _stop_backend(self, sandbox: SandboxInstance) -> bool:
+        """Stop the container if it is up; a paused one is resumed first."""
+        st = self.backend.state(sandbox.container_id) if sandbox.container_id else ""
+        if st in ("exited", "created", ""):
+            return True  # already stopped
+        if st == "paused":
+            self.backend.unpause(sandbox.container_id)
+        return self._backend_op(sandbox, "stop")
+
     def start_sandbox(self, sandbox_id: str) -> Optional[SandboxInstance]:
         """Start a stopped/suspended/errored sandbox."""
         sandbox = self._transition(sandbox_id, SandboxState.RUNNING)
-        if sandbox and not self._backend_op(sandbox, "start"):
+        if sandbox is None:
+            return None
+        if sandbox.container_id is None and not self._backend_op(sandbox, "start"):
             return sandbox
-        if sandbox:
-            logger.info("Started sandbox: %s", sandbox)
+        if sandbox.container_id is not None and not self._start_backend(sandbox):
+            return sandbox
+        logger.info("Started sandbox: %s", sandbox)
         return sandbox
 
     def stop_sandbox(self, sandbox_id: str) -> Optional[SandboxInstance]:
         """Gracefully stop a running sandbox."""
         sandbox = self._transition(sandbox_id, SandboxState.STOPPED)
-        if sandbox and not self._backend_op(sandbox, "stop"):
+        if sandbox is None:
+            return None
+        if sandbox.container_id is None and not self._backend_op(sandbox, "stop"):
             return sandbox
-        if sandbox:
-            logger.info("Stopped sandbox: %s", sandbox)
+        if sandbox.container_id is not None and not self._stop_backend(sandbox):
+            return sandbox
+        logger.info("Stopped sandbox: %s", sandbox)
         return sandbox
 
     def suspend_sandbox(self, sandbox_id: str) -> Optional[SandboxInstance]:
-        """Checkpoint and pause a running sandbox."""
+        """Checkpoint and pause a running sandbox.
+
+        A container that is already exited (sandbox suspended while stopped)
+        has nothing to pause — the transition is bookkeeping only.
+        """
         sandbox = self._transition(sandbox_id, SandboxState.SUSPENDED)
-        if sandbox and not self._backend_op(sandbox, "pause"):
+        if sandbox is None:
+            return None
+        if sandbox.container_id is None and not self._backend_op(sandbox, "pause"):
             return sandbox
-        if sandbox:
-            logger.info("Suspended sandbox: %s", sandbox)
+        if sandbox.container_id is not None:
+            if self.backend.state(sandbox.container_id) == "running":
+                if not self._backend_op(sandbox, "pause"):
+                    return sandbox
+        logger.info("Suspended sandbox: %s", sandbox)
         return sandbox
 
     def resume_sandbox(self, sandbox_id: str) -> Optional[SandboxInstance]:
         """Resume a suspended sandbox from checkpoint."""
         sandbox = self._transition(sandbox_id, SandboxState.RUNNING)
-        if sandbox and not self._backend_op(sandbox, "unpause"):
+        if sandbox is None:
+            return None
+        if sandbox.container_id is None and not self._backend_op(sandbox, "unpause"):
             return sandbox
-        if sandbox:
-            logger.info("Resumed sandbox: %s", sandbox)
+        if sandbox.container_id is not None and not self._start_backend(sandbox):
+            return sandbox
+        logger.info("Resumed sandbox: %s", sandbox)
         return sandbox
 
     def delete_sandbox(self, sandbox_id: str) -> Optional[SandboxInstance]:

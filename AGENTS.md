@@ -27,6 +27,11 @@ The `.vault/` directory is the project's official knowledge repository. It persi
    `VAULT_DEPLOYMENT.yaml`) may only be changed with explicit user approval,
    and every change must carry a **version header** noting what changed and why
    (the 2026-08-24 consistency pass set this precedent)
+7. **The test suite must stay environment-agnostic.** `tests/conftest.py` forces
+   `DAP_SANDBOX_RUNTIME=null` for the whole suite — never add a test that relies
+   on a tool being *absent* (GitHub `ubuntu-latest` runners preinstall Podman,
+   which silently broke CI, SOLUTION 34). Runtime-specific behavior is covered by
+   dedicated opt-in tests (e.g. the fake-podman test, Linux-only in CI).
 
 ### Quick Commands
 ```bash
@@ -334,3 +339,29 @@ Run `bash .vault/scripts/run_computing.sh audit`, then confirm:
 - **Published**: commit + push to `origin/main`; CI (3.12/3.13) re-verified green.
 - **Next** (see `HANDOFF.md`): first real production deploy (host + domain),
   live podman sandbox verification, optional RBAC integration tests.
+
+## 📝 Session Notes (2026-08-24 — CI Red → Green; Solutions 34–36)
+
+- **What broke**: CI on `3290e77` (run 32764412039) failed both jobs. Three distinct
+  bugs, all reproduced locally (Windows) and in the WSL Ubuntu CI replica:
+  1. `select_backend()` auto-detected the podman **preinstalled on GitHub runners**
+     → every manager test drove real podman (image pulls, 5s→45s suite, one failure).
+     Fix: new `tests/conftest.py` → `DAP_SANDBOX_RUNTIME=null` for the whole suite (rule 7 above).
+  2. The fake-podman fixture wrote a script with a **leading newline** — shebang no
+     longer at byte 0 → kernel ENOEXEC (`OSError: Exec format error` from Python;
+     manual `dash` runs masked it via source-fallback). Fix: LF-normalize + `lstrip("\n")`;
+     fixture is now state-tracking with exact podman call-count assertions.
+  3. **Latent production bug**: real podman cannot `pause` an *exited* container
+     (exit 125) → `stop → suspend` parked sandboxes in ERROR. Fix: `state()` on the
+     backend protocol (`podman inspect --format {{.State.Status}}`) + state-tolerant
+     `_start_backend()`/`_stop_backend()` in `vm_manager.py`.
+- **Verification**: 218 passed / 1 skipped on Windows (5.6s); **219/219 in the WSL
+  CI replica with real podman 5.7 installed** (both LF mirror and CRLF tree).
+- **Workspace hygiene**: `.venv-wsl/` now gitignored (kept locally for the replica);
+  `.pytest_cache` / `__pycache__` / `dap_test.db` cleaned before commit.
+- **Published**: commit + push; CI re-verified green on both 3.12 and 3.13 jobs.
+- **Live previews**: 8001/8081 restarted on the new code (`/health` →
+  `sandbox_runtime: "null"` on this box); `run_computing.sh cleanup` still avoided
+  (it would kill them) — caches cleaned manually.
+- **Next** (see `HANDOFF.md`): first real production deploy (host + domain),
+  live podman sandbox verification on a runtime host, optional extras.

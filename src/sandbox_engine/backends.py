@@ -38,6 +38,7 @@ class ExecutionBackend(Protocol):
 
     def available(self) -> bool: ...
     def create(self, sandbox_id: str, image: str, mem_gb: float, cpu: float) -> Optional[str]: ...
+    def state(self, container_id: str) -> str: ...
     def start(self, container_id: str) -> bool: ...
     def stop(self, container_id: str) -> bool: ...
     def pause(self, container_id: str) -> bool: ...
@@ -55,6 +56,10 @@ class NullBackend:
 
     def create(self, sandbox_id: str, image: str, mem_gb: float, cpu: float) -> Optional[str]:
         return f"null-{sandbox_id[:8]}"
+
+    def state(self, container_id: str) -> str:
+        # No real container: model it as always-running so every op is a no-op success.
+        return "running" if container_id else ""
 
     def start(self, container_id: str) -> bool:
         return True
@@ -109,6 +114,20 @@ class PodmanBackend:
         if self.runsc:
             cmd += ["--runtime", "runsc"]
         return cmd
+
+    def state(self, container_id: str) -> str:
+        """Current container status ('running'/'paused'/'exited'/'created'), '' if gone."""
+        try:
+            proc = subprocess.run(
+                self._base() + ["inspect", "--format", "{{.State.Status}}", container_id],
+                capture_output=True, text=True, timeout=30,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            logger.error("Backend inspect failed: %s", exc)
+            return ""
+        if proc.returncode != 0:
+            return ""
+        return proc.stdout.strip().lower()
 
     def create(self, sandbox_id: str, image: str, mem_gb: float, cpu: float) -> Optional[str]:
         cmd = self._base() + [

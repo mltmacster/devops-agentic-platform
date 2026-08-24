@@ -1,12 +1,33 @@
 # Handoff — DAP (DevOps Agentic Platform)
 
 Project root: `C:\Users\mltma\Downloads\test\devops-agentic-platform`
-Last session: **2026-08-24 — production build + user-approved vault consistency pass** (replaces prior handoff)
+Last session: **2026-08-24 — CI red→green fix (Solutions 34–36)** (replaces prior handoff;
+previous session: production build + user-approved vault consistency pass, `3290e77`)
 
 ## State of play (verified this session)
 
+The CI failure on `3290e77` (run 32764412039, both 3.12/3.13 jobs) is fixed and
+published green. Three bugs (SOLUTIONS.md 34–36):
+1. **CI drove real podman** — GitHub `ubuntu-latest` runners preinstall Podman
+   5.8.4; `select_backend()` auto-detected it and every manager test pulled
+   `ubuntu:24.04`. New `tests/conftest.py` forces `DAP_SANDBOX_RUNTIME=null` for
+   the whole suite (AGENTS.md rule 7: the suite must stay environment-agnostic).
+2. **Fake-podman shebang not at byte 0** — leading `\n` from the triple-quoted
+   string → ENOEXEC from Python (`OSError: Exec format error`; manual dash runs
+   masked it via source-fallback). Fixture now LF + `lstrip("\n")`, state-tracking,
+   exact podman call-count assertions.
+3. **Latent prod bug: real podman cannot pause an exited container** (exit 125).
+   `state()` added to the backend protocol; `_start_backend()`/`_stop_backend()`
+   in `vm_manager.py` are now state-tolerant (stop→suspend is a no-op, resume
+   re-starts an exited container).
+
+Verified: 218 passed / 1 skipped on Windows (5.6s); **219/219 in the WSL Ubuntu
+26.04 CI replica with real podman 5.7 installed** (4.3s; LF and CRLF trees).
+Published → CI green on both jobs. Live previews (8001/8081) restarted on the
+new code.
+
 All five roadmap phases remain COMPLETE, and the three open next-steps from the
-previous handoff are now **done**:
+previous handoff are **done**:
 
 1. ✅ **Real sandbox execution** — `src/sandbox_engine/backends.py`:
    `NullBackend` (original stub) / `PodmanBackend` / `PodmanBackend(runsc=True)` (gVisor),
@@ -43,8 +64,12 @@ previous handoff are now **done**:
   suite grew 187 → 219; the 1 skip is the Windows-only fake-podman test).
 - **Do NOT run the suite without `TESTING=1`** — it targets asyncpg→localhost:5432
   (no PostgreSQL here) and fails with ConnectionRefused.
+- `tests/conftest.py` forces the null sandbox runtime for the whole suite — the
+  suite is environment-agnostic and never drives real podman even when it is
+  installed (GitHub runners preinstall it). Don't remove that line (SOLUTION 34).
 - **Published**: `https://github.com/mltmacster/devops-agentic-platform` (`origin/main`),
-  CI = GitHub Actions pytest on 3.12/3.13 with `TESTING=1` (re-verified green after push).
+  CI = GitHub Actions pytest on 3.12/3.13 with `TESTING=1` (green on the CI-fix commit;
+  the earlier red run 32764412039 on `3290e77` is explained by the podman auto-detect bug above).
 - **Live processes (intentionally kept for user preview, venv python):** DAP API on
   **8001** (`server.log`), dashboard on **8081** (`dashboard.log`).
   `run_computing.sh cleanup` kills them — clean caches manually (`.pytest_cache`,
@@ -84,6 +109,8 @@ previous handoff are now **done**:
 2. **Live sandbox verification on a podman host** — set `DAP_SANDBOX_RUNTIME=auto`
    (or `runsc`) and exercise create/start/stop/suspend/delete end-to-end against
    real containers; the unit layer is proven with the fake-podman test (CI).
+   The state-tolerant suspend/resume (SOLUTION 36) is new since the production
+   build — verify it live before trusting it on a real host.
 3. **Optional** — RBAC integration tests (role-gated routes, not just the
    `/auth/check` evaluator); OTel/Jaeger tracing; rate limiting & quotas.
 
@@ -115,12 +142,13 @@ previous handoff are now **done**:
 
 ## Documentation map (authoritative)
 
-- `AGENTS.md` — vault rules (incl. rule 6: versioned schema changes), compute-automation
-  protocol, current root tree, phase status, session notes (latest: 2026-08-24 production)
+- `AGENTS.md` — vault rules (incl. rule 6: versioned schema changes; rule 7: env-agnostic
+  test suite), compute-automation protocol, current root tree, phase status, session notes
+  (latest: 2026-08-24 CI fix)
 - `.vault/VAULT_OVERVIEW.md` — architecture diagram, service status matrix (219 tests),
   phase sections, **Production Deployment** section, open TODOs
-- `.vault/SOLUTIONS.md` — 33 documented solutions (latest: Solutions 28–33, this session)
-- `.vault/SNAPSHOT_LOG.md` — snapshot history (latest: `2026-08-24-production`)
+- `.vault/SOLUTIONS.md` — 36 documented solutions (latest: Solutions 34–36, this session)
+- `.vault/SNAPSHOT_LOG.md` — snapshot history (latest: 2026-08-24 17:19 CI-FIX entry)
 - `.vault/VAULT_DEPLOYMENT.yaml` — v2.0.0 roadmap/pipeline (v1 in archive/ with RETIREMENT.md)
 - `docs/DEPLOYMENT_GUIDE.md` — §0 production quick start (compose + Caddy), then the
   idealized k8s scale-out design (sections 1–4)

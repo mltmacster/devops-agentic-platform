@@ -48,7 +48,7 @@
 | Agentic AI (Phase 3) | `src/agentic/` (7 + common/ 2) + `src/api/agentic/` (1) | **46 ✅** (incl. 22 llm + 4 engine) | **Active** | 2026-08-24 |
 | Network (Phase 5) | `src/network/` (4 files) | **20 ✅** | **Active** | 2026-08-24 |
 
-> **Total: 219 tests** (was 187) — 218 passed + 1 skipped (Windows-only fake-podman test; runs on CI Linux). Last verified 2026-08-24, `TESTING=1 .venv/Scripts/python.exe -m pytest tests/ -q`
+> **Total: 219 tests** (was 187) — 218 passed + 1 skipped (Windows-only fake-podman test; runs on CI Linux). Last verified 2026-08-24 (CI fix: `tests/conftest.py` forces `DAP_SANDBOX_RUNTIME=null` — the suite is environment-agnostic and never drives real podman on GitHub runners; 219/219 in the WSL CI replica with real podman installed). `TESTING=1 .venv/Scripts/python.exe -m pytest tests/ -q`
 
 ## Phase 2 — IDE Integration & Observability (COMPLETE) ✅
 

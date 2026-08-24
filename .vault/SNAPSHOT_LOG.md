@@ -97,6 +97,19 @@
 - **Tests**: 118/118 passing (`TESTING=1`)
 - **Snapshot Dir**: `.vault/snapshots/2026-08-23-framework-audit/`
 
+### [2026-08-24 17:19] CI-FIX | SNAPSHOT | CI red → green: force in-memory sandbox backend in tests, shebang-at-byte-0 fake podman, state-tolerant pause/resume
+- **Description**: Diagnosed the failed CI run (32764412039, commit `3290e77`): GitHub `ubuntu-latest` runners preinstall Podman 5.8.4, so `select_backend()` auto-detected real podman and every manager-using test pulled `ubuntu:24.04` (suite 5s→45s, `test_full_lifecycle_flow` failed). Fixed with `tests/conftest.py` (`DAP_SANDBOX_RUNTIME=null` for the whole suite); repaired the fake-podman fixture (leading newline broke the shebang → ENOEXEC; now LF + byte-0 shebang, state-tracking); added `state()` to the backend protocol and state-tolerant `_start_backend`/`_stop_backend` in `vm_manager.py` (real podman cannot pause an exited container). SOLUTIONS.md Solutions 34–36.
+- **Files Changed**:
+  - `tests/conftest.py` (new — env-agnostic suite)
+  - `src/sandbox_engine/backends.py` (`state()` on protocol + null + podman backends)
+  - `src/sandbox_engine/vm_manager.py` (state-aware start/stop/suspend/resume)
+  - `tests/test_sandbox_backends.py` (fake-podman fixture + lifecycle assertions)
+  - `.gitignore` (`.venv-wsl/` ignored)
+  - Vault: `SOLUTIONS.md` (34–36), `ARCHITECTURE.md` v1.2, `VAULT_OVERVIEW.md` (test note), `SNAPSHOT_LOG.md`, `AGENTS.md` (session notes + rule)
+- **Author**: Claude Bionic (handoff continuation)
+- **Tests**: 218 passed / 1 skipped on Windows (5.6s); **219/219 in the WSL Ubuntu 26.04 CI replica** (real podman 5.7 installed) in 4.3s — the exact CI analog, in both LF and CRLF trees
+- **Snapshot Dir**: n/a — no pre-change snapshot this session (fixes were uncommitted working-tree edits on top of `3290e77`)
+
 ---
 
 ## Snapshot Verification
@@ -109,3 +122,4 @@
 | 2026-08-23 21:45 | ✅ Validated | 2026-08-23 | All 118 tests pass |
 | 2026-08-24 00:23 | ✅ Validated | 2026-08-24 | All 187 tests pass |
 | 2026-08-24 14:30 | ✅ Validated | 2026-08-24 | 218/219 (1 Windows-only skip) · vault validation passed |
+| 2026-08-24 17:19 | ✅ Validated | 2026-08-24 | 219/219 in WSL CI replica (real podman present) · suite env-agnostic via tests/conftest.py |

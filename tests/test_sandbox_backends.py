@@ -112,20 +112,34 @@ def test_podman_oserror_reports_failure(monkeypatch):
 
 @pytest.fixture()
 def fake_podman(tmp_path, monkeypatch):
-    """A fake `podman` executable that records commands and always succeeds."""
+    """A fake `podman` executable that records commands and tracks container
+    state exactly like real podman (created/running/exited/paused)."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     log = tmp_path / "podman_calls.log"
+    state = tmp_path / "podman_state"
 
     script = bin_dir / "podman"
-    script.write_text(textwrap.dedent(f"""
-        #!/bin/sh
-        echo "$@" >> {log}
-        if [ "$1" = "create" ]; then
-            echo "fakecontainer123"
-        fi
-        exit 0
-    """))
+    # The kernel requires "#!" on the very first byte and LF endings: strip the
+    # leading newline from the triple-quoted string and normalize CRLF (which
+    # appears in Windows checkouts of this repo).
+    script.write_text(
+        textwrap.dedent(f"""
+            #!/bin/sh
+            STATE={state}
+            case "$1" in
+                create)  echo created > $STATE; echo fakecontainer123 ;;
+                start)   echo running > $STATE ;;
+                stop)    echo exited > $STATE ;;
+                pause)   echo paused > $STATE ;;
+                unpause) echo running > $STATE ;;
+                rm)      rm -f $STATE ;;
+                inspect) [ -f $STATE ] && cat $STATE ;;
+            esac
+            echo "$@" >> {log}
+            exit 0
+        """).replace("\r\n", "\n").lstrip("\n")
+    )
     script.chmod(script.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
     monkeypatch.setenv("DAP_SANDBOX_RUNTIME", "podman")
@@ -141,19 +155,27 @@ def test_manager_with_fake_podman(fake_podman):
     sb = manager.create_sandbox(tier="basic")
     assert sb.status == SandboxState.CREATING
     assert sb.container_id == "fakecontainer123"
+
+    # Running: suspend pauses the container, resume unpauses it.
     assert manager.start_sandbox(sb.id).status == SandboxState.RUNNING
+    assert manager.suspend_sandbox(sb.id).status == SandboxState.SUSPENDED
+    assert manager.resume_sandbox(sb.id).status == SandboxState.RUNNING
+
+    # Stopped, then suspended: the container is already exited, so suspend is a
+    # container no-op and resume must (re)START it — the real podman semantics.
     assert manager.stop_sandbox(sb.id).status == SandboxState.STOPPED
     assert manager.suspend_sandbox(sb.id).status == SandboxState.SUSPENDED
     assert manager.resume_sandbox(sb.id).status == SandboxState.RUNNING
+
     assert manager.delete_sandbox(sb.id) is None
 
     calls = fake_podman.read_text().splitlines()
-    assert any(line.startswith("create ") for line in calls)
-    assert any(line.startswith("start ") for line in calls)
-    assert any(line.startswith("stop ") for line in calls)
-    assert any(line.startswith("pause ") for line in calls)
-    assert any(line.startswith("unpause ") for line in calls)
-    assert any(line.startswith("rm ") for line in calls)
+    assert sum(1 for l in calls if l.startswith("create ")) == 1
+    assert sum(1 for l in calls if l.startswith("start ")) == 2   # initial + re-start on resume
+    assert sum(1 for l in calls if l.startswith("stop ")) == 1
+    assert sum(1 for l in calls if l.startswith("pause ")) == 1   # only suspend-while-running
+    assert sum(1 for l in calls if l.startswith("unpause ")) == 1
+    assert sum(1 for l in calls if l.startswith("rm ")) == 1
 
 
 def test_manager_backend_failure_parks_in_error(monkeypatch):

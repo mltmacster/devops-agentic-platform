@@ -740,3 +740,87 @@ always exists and the catch is dormant.
 
 **Verification**: Full suite green (218 passed, 1 skipped) with a stale `dap_test.db`
 present; legacy auth tests pass in the order CI runs them; fresh-DB run also green.
+
+## Solution 34: CI Pulled Real Podman — `tests/conftest.py` Forces the In-Memory Backend
+**Date**: 2026-08-24
+
+**Problem**: CI (`CI / test (3.12)`, `CI / test (3.13)`) failed after the production
+build commit. `select_backend()` auto-detects a real podman binary when
+`DAP_SANDBOX_RUNTIME` is unset — and GitHub `ubuntu-latest` runners **preinstall
+Podman 5.8.4** (documented in the runner-images README). Every test that builds a
+`get_sandbox_manager()` (a fresh manager per call) silently drove *real* podman:
+it pulled `ubuntu:24.04`, the suite time ballooned ~5s → ~45s, and
+test_full_lifecycle_flow failed.
+
+**Root cause**: The suite was written against the in-memory (null) backend but
+none of its 219 tests pinned the backend — the environment's podman install won
+the auto-detection race.
+
+**Solution**: New `tests/conftest.py` calls
+os.environ.setdefault("DAP_SANDBOX_RUNTIME", "null") at collection time. The
+entire suite is now environment-agnostic; the fake-podman test still opts into
+a fake binary via its own monkeypatch (setdefault doesn't override it).
+
+**Rule for future agents**: the test suite must stay environment-agnostic — never
+write a test that assumes a missing tool is absent. Pin runtimes in conftest.
+
+**Verification**: Suite 218 passed / 1 skipped on Windows (5.6s) and 219 passed
+in 4.3s on the WSL Ubuntu CI replica with real podman 5.7 installed — proving the
+null backend is forced even when podman exists.
+
+## Solution 35: Fake-Podman Shebang Not at Byte 0 → `OSError: Exec format error`
+**Date**: 2026-08-24
+
+**Problem**: The fake-podman fixture in `tests/test_sandbox_backends.py` wrote a
+shell script whose first byte was a leading `\n` (artifact of the triple-quoted
+f-string). The shebang line is only honored at byte 0, so the kernel returns
+ENOEXEC and Python's `subprocess.run` raises `OSError: Exec format error`.
+
+**Root cause** (and why it was invisible locally): a file starting `\n#!/bin/sh`
+*does* run when exec'd manually from dash — dash falls back to sourcing it — so
+manual debugging passed while the Python harness failed. A CRLF in the embedded
+string would break it a second way (`/bin/sh\r`).
+
+**Solution**: The fixture normalizes the script with
+`.replace("\r\n", "\n").lstrip("\n")` — LF line endings and shebang at byte 0,
+regardless of the platform that wrote the file. The fake also became
+state-tracking (created/running/exited/paused in a state file; `inspect`
+cat's it), and the lifecycle test was restructured to real podman semantics:
+start → suspend (pause) → resume (unpause) → stop → suspend (no pause call)
+→ resume (re-START) → delete, asserting exact call counts
+(start=2, pause=1, unpause=1, stop=1, create=1, rm=1).
+
+**Rule for future agents**: any fixture that execs a generated script must
+verify byte 0 is `#` and the file is LF-only; never trust triple-quoted strings.
+
+**Verification**: `tests/test_sandbox_backends.py` 12/12 green on Linux (WSL
+replica of CI) with real podman installed; skipped on Windows as before.
+
+## Solution 36: Real Podman Cannot Pause an Exited Container — State-Tolerant suspend/resume
+**Date**: 2026-08-24
+
+**Problem**: Latent production bug (would have hit on any real podman host):
+`podman pause` on an **exited** container fails with
+`"exited" is not running, can't pause: container state improper` (exit 125).
+The manager called pause unconditionally, so `stop → suspend` parked a stopped
+sandbox in ERROR even though the user just asked to suspend an already-stopped
+sandbox — a no-op request must not error.
+
+**Root cause**: The state machine tracked *sandbox* lifecycle state but ignored
+the *container* state, so every backend op assumed a single container state.
+
+**Solution**: Two changes. (1) `state(container_id) -> str` added to the
+`ExecutionBackend` protocol: `NullBackend` returns `"running"` iff a container
+id exists, else `""`; `PodmanBackend` runs
+`podman inspect --format {{.State.Status}}` and returns `""` on missing/failed.
+(2) `vm_manager.py` gained state-tolerant helpers — `_start_backend()`
+(paused→unpause, exited/created/""→start, running→no-op) and
+`_stop_backend()` (exited/created/""→no-op, paused→unpause-then-stop);
+`suspend_sandbox` pauses only when the container is actually running, else
+bookkeeping only; `resume_sandbox` routes through `_start_backend()`. A
+containerless sandbox (`container_id=None`) still parks ERROR via
+`_backend_op()` as in Solution 31.
+
+**Verification**: Reproduced the exit-125 failure against real podman in the
+WSL replica before the fix; after, the full fake-podman lifecycle test and the
+whole 219-test suite pass with podman installed on the host.

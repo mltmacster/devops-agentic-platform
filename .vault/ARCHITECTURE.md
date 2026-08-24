@@ -2,12 +2,15 @@
 # 🏛️ PROJECT VAULT — DO NOT MODIFY BY AGENTS
 # =============================================
 
-> **Version: 1.1 — 2026-08-24 consistency pass (user-approved).**
-> v1 (2026-08-21) is preserved in `.vault/snapshots/2026-08-24-production/vault/`.
-> Changes: removed stale `ARCHITECTURE.md.bak` reference, updated the directory
-> tree to the actual layout, current-state section now matches the codebase
-> (all phases complete, 219 tests), snapshot/solution examples aligned to
-> actual practice (`YYYY-MM-DD-<name>/` dirs, single-file SOLUTIONS.md).
+> **Version: 1.2 — 2026-08-24 CI-fix session.**
+> v1.1 (2026-08-24) is the previous header text; v1 (2026-08-21) is preserved
+> in `.vault/snapshots/2026-08-24-production/vault/`.
+> v1.2 changes: `ExecutionBackend` protocol now includes `state(container_id)`
+> (SOLUTION 36 — state-tolerant suspend/resume for real podman); the sandbox
+> engine line documents it.
+> (v1.1: consistency pass — stale `.bak` ref removed, directory tree updated,
+> current state aligned to codebase, snapshot/solution examples aligned to
+> actual practice.)
 
 **WARNING:** This directory is the project's official knowledge repository.
 Agents and automation systems MUST NOT:
@@ -96,8 +99,9 @@ This vault is maintained for:
 ### Services Implemented:
 - ✅ Auth Service — RBAC engine + real persistence (users table, PBKDF2, HS256 JWT, `DAP_AUTH_STRICT` fail-closed mode) — **28 tests**
 - ✅ Workspace Orchestrator — CRUD + deterministic list — **15 tests**
-- ✅ Sandbox Lifecycle Manager — state machine + API — **15 API + 39 engine tests**
-- ✅ Sandbox Execution Backends — null / Podman / gVisor (`DAP_SANDBOX_RUNTIME`), `--network none` — **12 tests**
+- ✅ Sandbox Lifecycle Manager — state machine + API; state-tolerant start/stop/suspend/resume via backend `state()` — **15 API + 39 engine tests**
+- ✅ Sandbox Execution Backends — null / Podman / gVisor (`DAP_SANDBOX_RUNTIME`), `--network none`, protocol incl. `state()` (`podman inspect`-backed) — **12 tests**
+- ✅ Test isolation — `tests/conftest.py` forces `DAP_SANDBOX_RUNTIME=null` so the suite is environment-agnostic (never hits real podman, e.g. on GitHub runners; SOLUTION 34)
 - ✅ IDE Core — WebSocket `/ws/{session_id}` + LSP protocol + REST config — **11 tests**
 - ✅ Observability Collector — Prometheus `/metrics` (real LLM token/latency counters), Grafana JSON, health — **28 + 5 metrics tests**
 - ✅ Agentic AI Engine — 3 agents + orchestrator + opt-in LLM backend (`LLMStats`) — **24 + 22 tests**
