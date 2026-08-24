@@ -448,3 +448,31 @@ longer match the working environment.
 **Known issue left for human approval** (vault-protected file): `.vault/VAULT_DEPLOYMENT.yaml`
 has a YAML syntax error (markdown `- [ ]` checkboxes inside YAML list items) and a stale
 phase plan; not modified pending approval.
+
+## Solution 22: CI Failure — Single-Param `Dict[AgentType]` Annotation on Python ≤3.13
+**Date**: 2026-08-23 (session: GitHub CI fix after first publish)
+
+**Problem**: After publishing to `github.com/mltmacster/devops-agentic-platform`, both CI
+matrix jobs failed in <20s: `test (3.12)` Failing, `test (3.13)` Cancelled (fail-fast).
+Local suite was green because the machine runs Python 3.14, which tolerates the bug.
+
+**Root cause**: `src/agentic/agent_orchestrator.py:104` —
+`def get_agents(self) -> Dict[AgentType]:` is a **single-parameter** subscription of the
+two-parameter `typing.Dict`. On Python 3.13 (and 3.12) this raises
+`TypeError: Too few arguments for typing.Dict; actual 1, expected 2` **at import time**,
+so the whole suite died during collection. Python 3.14 relaxed single-arg subscription
+of the typing special aliases, so 3.14 never surfaced it.
+
+**Fix**: `Dict[AgentType, BaseAgent]` + top-level `from .plugin_interface import BaseAgent`
+(plugin_interface imports only abc/typing — no circular import; the lazy agent-class
+imports in `__init__` are unchanged).
+
+**Verification**:
+- Reproduced the exact CI error in a fresh Python 3.13 venv, then:
+  - 3.13 venv (matches CI): `TESTING=1 python -m pytest tests/ -q` → **118/118 passed**
+  - 3.14 system (local): **118/118 passed**
+- Grepped all of src/ + tests/ for other single-parameter `Dict[...]` subscriptions:
+  zero remaining; no PEP 695 `type` statements or `except*` (3.13-only syntax), so 3.12
+  CI is covered by the same fix.
+- Repo is now published at `https://github.com/mltmacster/devops-agentic-platform`; fix
+  pushed to `main` — CI should be green.

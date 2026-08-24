@@ -7,6 +7,8 @@ from enum import Enum, auto
 from typing import Dict, List, Optional, Any
 import logging
 
+from .plugin_interface import BaseAgent
+
 logger = logging.getLogger(__name__)
 
 
@@ -101,7 +103,7 @@ class AgenticAIOrchestrator:
         agent = self._agents[agent_type]
         return agent.execute(request_id, query)
 
-    def get_agents(self) -> Dict[AgentType]:
+    def get_agents(self) -> Dict[AgentType, BaseAgent]:
         """Get all registered agents."""
         return self._agents.copy()
 

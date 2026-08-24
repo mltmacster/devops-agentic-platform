@@ -252,3 +252,14 @@ Run `bash .vault/scripts/run_computing.sh audit`, then confirm:
   has a YAML syntax error (markdown checkboxes inside YAML) and a stale phase plan
 - Live server restarted with `TESTING=1` (SQLite) so DB routes work in the live view
 - Verified: 118/118 tests · 24/24 `src.*` modules import · 47 live API paths
+
+## 📝 Session Notes (2026-08-23 — GitHub Publish + CI Fix)
+
+- Repo initialized locally (`main`, `core.autocrlf=false`) and published at
+  `https://github.com/mltmacster/devops-agentic-platform` (origin remote set)
+- **CI fix** (SOLUTIONS.md Solution 22): `agent_orchestrator.get_agents()` annotated
+  `Dict[AgentType]` (single-param) → TypeError at import on Python 3.12/3.13 (CI matrix);
+  3.14 tolerates it, which masked the bug locally. Fixed to `Dict[AgentType, BaseAgent]`.
+- Verified 118/118 on both 3.13 (fresh venv, matches CI) and 3.14
+- `.gitignore` hardening: `dap_test.db` comment split to its own line; `docker/` →
+  `/docker/` so `templates/docker/` deliverables are tracked
