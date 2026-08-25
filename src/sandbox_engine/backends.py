@@ -136,10 +136,12 @@ class PodmanBackend:
             "--memory", f"{int(mem_gb * 1024)}m",
             "--cpus", str(cpu),
             "--network", "none",
+            "--pull", "missing",  # first create on a fresh host pulls the base image
             image,
             "sleep", "infinity",
         ]
-        proc = subprocess.run(cmd, capture_output=True, text=True)
+        # Generous timeout: --pull missing can download the base image on first use.
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600.0)
         if proc.returncode != 0:
             logger.error("podman create failed: %s", proc.stderr[:300])
             return None

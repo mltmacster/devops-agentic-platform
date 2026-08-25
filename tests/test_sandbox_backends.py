@@ -14,12 +14,15 @@ from pathlib import Path
 import pytest
 
 from src.sandbox_engine import (
+    TIERS,
     NullBackend,
     PodmanBackend,
     SandboxLifecycleManager,
     SandboxState,
     select_backend,
 )
+
+from fake_backends import FakeStateBackend
 
 
 # ─── Backend selection ─────────────────────────────
@@ -80,6 +83,7 @@ def test_podman_create_argv_includes_limits_and_isolation(monkeypatch):
     assert "--network" in cmd and "none" in cmd  # no external network by default
     assert "--memory" in cmd and "2048m" in cmd
     assert "--cpus" in cmd and "1.0" in cmd
+    assert "--pull" in cmd and "missing" in cmd  # fresh host pulls the base image
 
 
 def test_podman_runsc_flag():
@@ -199,6 +203,98 @@ def test_manager_backend_failure_parks_in_error(monkeypatch):
     # ...but DELETE always cleans it up
     assert manager.delete_sandbox(sb.id) is None
     assert manager.get_sandbox(sb.id) is None
+
+
+# ─── execute_op (stateless path used by the DB-backed API) ─────────
+
+
+def test_execute_op_state_tolerance():
+    """execute_op must apply podman's real state semantics (SOLUTION 36).
+
+    Uses a state-tracking fake so this runs on every platform; the
+    fake-podman end-to-end test above covers the same paths through a
+    real (scripted) binary on Linux/CI.
+    """
+    backend = FakeStateBackend()
+    manager = SandboxLifecycleManager(backend=backend)
+
+    cid = backend.create("sb-12345678", "ubuntu:24.04", 2, 1)
+    assert backend.state(cid) == "created"
+
+    # created → running
+    assert manager.execute_op("start", "sb1", cid) is True
+    assert backend.state(cid) == "running"
+    assert backend.count("start") == 1
+
+    # running → exited
+    assert manager.execute_op("stop", "sb1", cid) is True
+    assert backend.state(cid) == "exited"
+
+    # stop an already-exited container: no-op success, no backend stop call
+    assert manager.execute_op("stop", "sb1", cid) is True
+    assert backend.count("stop") == 1
+
+    # suspend an exited container: bookkeeping only — real podman cannot
+    # pause it, and the state-tolerant path must not try (SOLUTION 36)
+    assert manager.execute_op("suspend", "sb1", cid) is True
+    assert backend.count("pause") == 0
+    assert backend.state(cid) == "exited"
+
+    # resume an exited container: must (re)START it
+    assert manager.execute_op("resume", "sb1", cid) is True
+    assert backend.state(cid) == "running"
+    assert backend.count("start") == 2
+
+    # suspend a running container: real pause; resume unpauses
+    assert manager.execute_op("suspend", "sb1", cid) is True
+    assert backend.state(cid) == "paused"
+    assert manager.execute_op("resume", "sb1", cid) is True
+    assert backend.state(cid) == "running"
+    assert backend.count("unpause") == 1
+
+    # remove destroys the container
+    assert manager.execute_op("remove", "sb1", cid) is True
+    assert backend.state(cid) == ""
+
+
+def test_execute_op_missing_container_parks_error():
+    """A container that vanished from the host (e.g. host reset) fails the op."""
+    backend = FakeStateBackend()
+    manager = SandboxLifecycleManager(backend=backend)
+
+    cid = backend.create("sb-87654321", "img", 1, 1)
+    backend.start(cid)
+    del backend.containers[cid]  # simulate `podman system reset` on the host
+
+    assert manager.execute_op("start", "sbX", cid) is False
+
+
+def test_execute_op_without_container():
+    """Ops on a sandbox whose create failed (container_id=None) must fail,
+    so the caller can park it in ERROR; remove is a clean no-op."""
+    manager = SandboxLifecycleManager(backend=FakeStateBackend())
+
+    assert manager.execute_op("remove", "sbX", None) is True
+    for op in ("start", "stop", "suspend", "resume"):
+        assert manager.execute_op(op, "sbX", None) is False
+
+    with pytest.raises(ValueError):
+        manager.execute_op("bogus", "sbX", None)
+
+
+def test_create_sandbox_with_explicit_id():
+    """The API passes its own (DB) id; the manager must honor it."""
+    manager = SandboxLifecycleManager(backend=FakeStateBackend())
+    sb = manager.create_sandbox(tier="basic", sandbox_id="my-external-id")
+    assert sb.id == "my-external-id"
+    assert sb.container_id == "cid-my-exter"  # first 8 chars of the id
+
+
+def test_tiers_constant():
+    """The API validates tiers against this map."""
+    assert set(TIERS) == {"basic", "pro", "enterprise", "ga"}
+    assert TIERS["basic"].cpu_cores == 1.0
+    assert TIERS["basic"].memory_gb == 2.0
 
 
 def test_null_backend_manager_lifecycle_unchanged():

@@ -30,7 +30,9 @@ USER appuser
 
 EXPOSE 8001 8081
 
+# NOTE: the app's global health route is /health (SOLUTION 38 — an earlier
+# revision probed /api/health, which 404s and left the container unhealthy).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8001/api/health', timeout=3).status == 200 else 1)"
+  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8001/health', timeout=3).status == 200 else 1)"
 
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8001"]

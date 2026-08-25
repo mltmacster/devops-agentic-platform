@@ -365,3 +365,35 @@ Run `bash .vault/scripts/run_computing.sh audit`, then confirm:
   (it would kill them) — caches cleaned manually.
 - **Next** (see `HANDOFF.md`): first real production deploy (host + domain),
   live podman sandbox verification on a runtime host, optional extras.
+
+## 📝 Session Notes (2026-08-25 — Live Podman Verify 30/30 + Production Deploy Prep; Solutions 37–39)
+
+- **Live verification (goal 1) ✅**: re-ran `dev-scripts/live_verify_sandbox.sh`
+  on the WSL Ubuntu 26.04 runtime host after replacing the pre-start
+  `NetworkMode` check with a functional one (`/sys/class/net` == `lo`) —
+  **30/30 ALL GREEN** against real podman 5.7.0, incl. API-restart durability.
+  Cleaned the WSL strays it surfaced (`dap-fieldtest*`, 2 ad-hoc containers,
+  `/tmp/tst.txt`); `~/.venv-dap-live` kept (working runtime-host venv).
+- **Deploy prep (goal 2) ✅ locally**: first-ever run of
+  `templates/docker/DOCKERCOMPOSE_PROD.yml` on Docker Desktop
+  (`DAP_PUBLIC_HOST=localhost`, internal CA). Fixed five first-deploy
+  blockers (SOLUTION 38: build context, `/health` healthcheck, dashboard JS
+  sentinel + `DAP_BROWSER_API_URL`, unpublished 8001/8081, Caddyfile
+  `/health*`) and one security gap (SOLUTION 39: `StrictAuthMiddleware`
+  fails closed on data routes in strict mode; registration closes after the
+  first user — the dashboard keeps working because its two read-only polls
+  are allowlisted). Verified: all 4 containers healthy, strict auth
+  end-to-end over HTTPS, dashboard live, Postgres persistence across
+  `docker restart api`, `init_db` migration on real PostgreSQL. Tearing down
+  afterwards (volumes, images, throwaway `.env`); Docker Desktop stopped;
+  local previews (8001/8081) untouched.
+- **Tests: 237 passed / 1 skipped** (Windows venv 3.14.6; was 229 passed +
+  1 skipped — +8 route-guard tests; suite total 238).
+- **Suite stays environment-agnostic**: guard is a no-op in dev mode;
+  `tests/conftest.py` runtime pin unchanged (rule 7).
+- **Next** (see `HANDOFF.md`): **the only remaining deploy step is the user's
+  real host + domain** — `DAP_PUBLIC_HOST` in `templates/docker/.env`, then
+  `docker compose -f DOCKERCOMPOSE_PROD.yml up -d --build` per
+  `docs/DEPLOYMENT_GUIDE.md` §0. Optional: real sandbox execution in prod
+  (guide §0 "Real sandbox execution in production" — host podman socket or
+  native API).

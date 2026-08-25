@@ -1,0 +1,92 @@
+# =============================================
+# DAP Production Stack — docker compose
+# =============================================
+# Services: postgres (identity + workspace + sandbox state)
+#           api       (FastAPI monolith, src.main:app, strict auth)
+#           dashboard (live browser dashboard, polls the API)
+#           caddy     (reverse proxy, automatic Let's Encrypt TLS)
+#
+# Usage (from the repo root's templates/docker directory):
+#   cp .env.template .env   # then fill in DAP_JWT_SECRET, DAP_PUBLIC_HOST, ...
+#   docker compose -f DOCKERCOMPOSE_PROD.yml up -d
+#
+# Set DAP_PUBLIC_HOST to your domain (Caddy provisions TLS automatically
+# for HTTP-01 challenge; the domain must A-record to this host).
+
+name: dap
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dap}
+      POSTGRES_USER: ${POSTGRES_USER:-dap}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-dap}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: templates/docker/Dockerfile
+    restart: unless-stopped
+    environment:
+      TESTING: "0"
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-dap}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-dap}
+      DAP_AUTH_STRICT: "1"
+      DAP_JWT_SECRET: ${DAP_JWT_SECRET:?set DAP_JWT_SECRET in .env}
+      DAP_LLM_API_KEY: ${DAP_LLM_API_KEY:-}
+      DAP_LLM_BASE_URL: ${DAP_LLM_BASE_URL:-https://api.openai.com/v1}
+      DAP_LLM_MODEL: ${DAP_LLM_MODEL:-gpt-4o-mini}
+      DAP_SANDBOX_RUNTIME: ${DAP_SANDBOX_RUNTIME:-auto}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8001:8001"
+
+  dashboard:
+    build:
+      context: ..
+      dockerfile: templates/docker/Dockerfile
+    restart: unless-stopped
+    command: ["python", "dap_dashboard.py", "--port", "8081"]
+    environment:
+      DAP_API_URL: http://api:8001
+    # image healthcheck probes the API port; override for this container
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      - api
+    ports:
+      - "8081:8081"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DAP_PUBLIC_HOST: ${DAP_PUBLIC_HOST:-dap.local}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - api
+      - dashboard
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

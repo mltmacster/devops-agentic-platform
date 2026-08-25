@@ -3,6 +3,8 @@
 Uses async SQLAlchemy + PostgreSQL for persistent sandbox state tracking.
 """
 
+import asyncio
+
 from fastapi import FastAPI, Depends, HTTPException, status
 from pydantic import BaseModel
 
@@ -11,7 +13,14 @@ from src.database import get_session
 from src.database.sandbox_repo import SandboxRepository
 
 # ─── Sandbox engine: lifecycle state machine + execution backend ──────
-from src.sandbox_engine import SandboxLifecycleManager, SandboxState, can_transition, state_from_str
+from src.sandbox_engine import (
+    DEFAULT_IMAGE,
+    TIERS,
+    SandboxLifecycleManager,
+    SandboxState,
+    can_transition,
+    state_from_str,
+)
 
 # ─── Network imports for URL formatting ──────────────
 from src.network import NetworkConfig, build_ide_config_urls
@@ -24,6 +33,7 @@ class CreateSandboxRequest(BaseModel):
 
     workspace_id: str
     stack: str = "python"  # python | rust | nodejs | ml
+    tier: str = "basic"  # resource tier: basic | pro | enterprise | ga
 
 
 class CreateSandboxResponse(BaseModel):
@@ -32,7 +42,9 @@ class CreateSandboxResponse(BaseModel):
     id: str
     workspace_id: str
     stack: str
-    status: str = "creating"
+    tier: str = "basic"
+    status: str = "creating"  # creating on success; error if the runtime create failed
+    container_id: str | None = None  # execution container id (None = create failed)
     urls: dict[str, str]
 
 
@@ -43,6 +55,7 @@ class SandboxStatus(BaseModel):
     status: str  # creating | running | stopped | suspended | error
     stack: str
     runtime: str = "null"  # sandbox execution backend (null | podman | runsc)
+    container_id: str | None = None
     resources: dict
 
 
@@ -81,6 +94,11 @@ def _get_engine() -> SandboxLifecycleManager:
     if _engine is None:
         _engine = SandboxLifecycleManager()
     return _engine
+
+
+async def _run_engine_op(op: str, sandbox_id: str, container_id: str | None) -> bool:
+    """Run a state-tolerant backend op off the event loop (sync subprocess)."""
+    return await asyncio.to_thread(_get_engine().execute_op, op, sandbox_id, container_id)
 
 
 async def _validate_transition(
@@ -128,12 +146,18 @@ async def create_sandbox(
       3. Install the requested stack (Python/Rust/Node.js/ML)
       4. Register the sandbox record in PostgreSQL
     """
-    # Validate stack
+    # Validate stack and tier
     valid_stacks = {"python", "rust", "nodejs", "ml"}
     if payload.stack not in valid_stacks:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid stack '{payload.stack}'. Must be one of: {', '.join(sorted(valid_stacks))}",
+        )
+    valid_tiers = set(TIERS)
+    if payload.tier not in valid_tiers:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid tier '{payload.tier}'. Must be one of: {', '.join(sorted(valid_tiers))}",
         )
 
     repo = SandboxRepository(session)
@@ -141,6 +165,23 @@ async def create_sandbox(
         workspace_id=payload.workspace_id,
         stack=payload.stack,
     )
+
+    # Actually create the execution container (sync subprocess → worker
+    # thread). `--pull missing` fetches the base image on a fresh host.
+    quota = TIERS[payload.tier]
+    container_id = await asyncio.to_thread(
+        _get_engine().backend.create,
+        sandbox.id,
+        DEFAULT_IMAGE,
+        quota.memory_gb,
+        quota.cpu_cores,
+    )
+    if container_id is None:
+        # Real backend create failed: keep the row (trackable/deletable) and
+        # park it in ERROR — matches the manager's no-container semantics.
+        await repo.update_state(sandbox.id, "error")
+    else:
+        await repo.update_state(sandbox.id, "creating", container_id=container_id)
 
     # Generate network URLs for external access
     config = NetworkConfig()
@@ -156,6 +197,9 @@ async def create_sandbox(
         id=sandbox.id,
         workspace_id=payload.workspace_id,
         stack=payload.stack,
+        tier=payload.tier,
+        status="error" if container_id is None else "creating",
+        container_id=container_id,
         urls=urls,
     )
 
@@ -184,6 +228,7 @@ async def get_sandbox_status(
         status=sandbox.state,
         stack=sandbox.stack,
         runtime=_get_engine().runtime,
+        container_id=sandbox.container_id,
         resources={
             "cpu_cores_used": round(sandbox.cpu_cores_used, 2),
             "memory_mb_used": sandbox.memory_mb_used,
@@ -207,8 +252,17 @@ async def start_sandbox(
       1. Boot the VM (Podman start) or restore its checkpoint
       2. Transition state to 'running' in the database
     """
-    await _validate_transition(session, sandbox_id, SandboxState.RUNNING, "start")
-    await SandboxRepository(session).update_state(sandbox_id, "running")
+    sandbox = await _validate_transition(session, sandbox_id, SandboxState.RUNNING, "start")
+    ok = await _run_engine_op("start", sandbox_id, sandbox.container_id)
+    await SandboxRepository(session).update_state(
+        sandbox_id, "running" if ok else "error", container_id=sandbox.container_id
+    )
+    if not ok:
+        await session.commit()  # persist the ERROR state before the 502 propagates
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Sandbox runtime failed to start the container; sandbox parked in 'error'.",
+        )
 
 
 @app.post(
@@ -227,8 +281,17 @@ async def stop_sandbox(
       2. Wait up to 30s for graceful shutdown
       3. Transition state to 'stopped' in the database
     """
-    await _validate_transition(session, sandbox_id, SandboxState.STOPPED, "stop")
-    await SandboxRepository(session).update_state(sandbox_id, "stopped")
+    sandbox = await _validate_transition(session, sandbox_id, SandboxState.STOPPED, "stop")
+    ok = await _run_engine_op("stop", sandbox_id, sandbox.container_id)
+    await SandboxRepository(session).update_state(
+        sandbox_id, "stopped" if ok else "error", container_id=sandbox.container_id
+    )
+    if not ok:
+        await session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Sandbox runtime failed to stop the container; sandbox parked in 'error'.",
+        )
 
 
 @app.post(
@@ -247,8 +310,17 @@ async def suspend_sandbox(
       2. Pause the VM for later resume
       3. Transition state to 'suspended' in the database
     """
-    await _validate_transition(session, sandbox_id, SandboxState.SUSPENDED, "suspend")
-    await SandboxRepository(session).update_state(sandbox_id, "suspended")
+    sandbox = await _validate_transition(session, sandbox_id, SandboxState.SUSPENDED, "suspend")
+    ok = await _run_engine_op("suspend", sandbox_id, sandbox.container_id)
+    await SandboxRepository(session).update_state(
+        sandbox_id, "suspended" if ok else "error", container_id=sandbox.container_id
+    )
+    if not ok:
+        await session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Sandbox runtime failed to pause the container; sandbox parked in 'error'.",
+        )
 
 
 @app.post(
@@ -267,8 +339,17 @@ async def resume_sandbox(
       2. Start the sandbox process
       3. Transition state to 'running' in the database
     """
-    await _validate_transition(session, sandbox_id, SandboxState.RUNNING, "resume")
-    await SandboxRepository(session).update_state(sandbox_id, "running")
+    sandbox = await _validate_transition(session, sandbox_id, SandboxState.RUNNING, "resume")
+    ok = await _run_engine_op("resume", sandbox_id, sandbox.container_id)
+    await SandboxRepository(session).update_state(
+        sandbox_id, "running" if ok else "error", container_id=sandbox.container_id
+    )
+    if not ok:
+        await session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Sandbox runtime failed to start the container; sandbox parked in 'error'.",
+        )
 
 
 @app.delete(
@@ -287,7 +368,14 @@ async def delete_sandbox(
       2. Destroy the VM and free resources
       3. Delete the sandbox record from PostgreSQL
     """
-    await _validate_transition(session, sandbox_id, SandboxState.DELETED, "delete")
+    sandbox = await _validate_transition(session, sandbox_id, SandboxState.DELETED, "delete")
+
+    if sandbox.container_id is not None:
+        # Best-effort container destruction (rm -f is idempotent). Even a
+        # failed remove (e.g. host was reset) still deletes the row so the
+        # sandbox stays manageable; strays surface in `podman ps -a` as
+        # dap-sbx-<id-prefix>.
+        await asyncio.to_thread(_get_engine().backend.remove, sandbox.container_id)
 
     success = await SandboxRepository(session).delete(sandbox_id)
     if not success:

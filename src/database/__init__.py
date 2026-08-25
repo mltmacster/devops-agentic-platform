@@ -105,15 +105,33 @@ async def get_session():
             pass
 
 
+def _apply_lightweight_migrations(conn):
+    """Idempotent schema migrations for databases created before a column existed.
+
+    `create_all` only creates missing tables, never alters existing ones —
+    so each migration here inspects first and ALTERs only when needed.
+    Both SQLite and PostgreSQL support `ADD COLUMN` for nullable columns.
+    """
+    from sqlalchemy import inspect as sa_inspect, text
+
+    tables = sa_inspect(conn).get_table_names()
+    if "sandboxes" in tables:
+        cols = {c["name"] for c in sa_inspect(conn).get_columns("sandboxes")}
+        if "container_id" not in cols:
+            conn.execute(text("ALTER TABLE sandboxes ADD COLUMN container_id VARCHAR(64)"))
+
+
 async def init_db():
     """Create all tables in the database.
 
     Call this once at startup (or in test setup) to ensure the schema exists.
+    Applies lightweight migrations for databases created by older versions.
     """
     async with get_engine().begin() as conn:
         from .models import Base  # noqa: F401 - imports all models
 
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_apply_lightweight_migrations)
 
 
 async def drop_db():

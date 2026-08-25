@@ -38,17 +38,17 @@
 
 | Service | Files | Tests | Status | Last Updated |
 |---------|-------|-------|--------|-------------|
-| Auth | `src/api/auth/` (4 files, +credentials.py) + `src/database/user_repo.py` | **28 ✅** | Active | 2026-08-24 |
+| Auth | `src/api/auth/` (5 files, +route_guard.py) + `src/database/user_repo.py` | **36 ✅** (incl. 8 route-guard) | Active | 2026-08-25 |
 | Workspace | `src/api/workspace/` (1 file) | **15 ✅** | Active | 2026-08-24 |
-| Sandbox | `src/api/sandbox/` (1 file) + state machine guard | **15 ✅** | Active | 2026-08-24 |
-| Sandbox Engine | `src/sandbox_engine/vm_manager.py` (3 files) | **39 ✅** | Active | 2026-08-24 |
-| Sandbox Backends | `src/sandbox_engine/backends.py` (null / Podman / gVisor) | **12 ✅** | Active | 2026-08-24 |
+| Sandbox | `src/api/sandbox/` (1 file) + state machine guard + engine wiring | **21 ✅** | Active | 2026-08-25 |
+| Sandbox Engine | `src/sandbox_engine/vm_manager.py` (3 files, +`execute_op`) | **39 ✅** | Active | 2026-08-25 |
+| Sandbox Backends | `src/sandbox_engine/backends.py` (null / Podman / gVisor) + `tests/fake_backends.py` | **17 ✅** | Active | 2026-08-25 |
 | IDE Core (Phase 2) | `src/api/ide/` (1 file) | **11 ✅** | **Active** | 2026-08-24 |
 | Observability (Phase 2) | `src/api/observability/` (1 file; real LLM metrics wired) + `test_llm_metrics.py` | **33 ✅** (28 + 5 metrics) | **Active** | 2026-08-24 |
 | Agentic AI (Phase 3) | `src/agentic/` (7 + common/ 2) + `src/api/agentic/` (1) | **46 ✅** (incl. 22 llm + 4 engine) | **Active** | 2026-08-24 |
 | Network (Phase 5) | `src/network/` (4 files) | **20 ✅** | **Active** | 2026-08-24 |
 
-> **Total: 219 tests** (was 187) — 218 passed + 1 skipped (Windows-only fake-podman test; runs on CI Linux). Last verified 2026-08-24 (CI fix: `tests/conftest.py` forces `DAP_SANDBOX_RUNTIME=null` — the suite is environment-agnostic and never drives real podman on GitHub runners; 219/219 in the WSL CI replica with real podman installed). `TESTING=1 .venv/Scripts/python.exe -m pytest tests/ -q`
+> **Total: 238 tests** (was 219) — 237 passed + 1 skipped (Windows-only fake-podman test; runs on CI Linux). Last verified 2026-08-25: engine wiring (SOLUTION 37, +11) + route guard (SOLUTION 39, +8) = +19 tests; suite stays environment-agnostic (`tests/conftest.py` forces `DAP_SANDBOX_RUNTIME=null`; the guard is a no-op in dev mode). `TESTING=1 .venv/Scripts/python.exe -m pytest tests/ -q`
 
 ## Phase 2 — IDE Integration & Observability (COMPLETE) ✅
 

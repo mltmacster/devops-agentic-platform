@@ -12,6 +12,7 @@ from .backends import (
     select_backend,
 )
 from .vm_manager import (
+    TIERS,
     TRANSITIONS,
     SandboxInstance,
     SandboxLifecycleManager,
@@ -27,6 +28,7 @@ __all__ = [
     "ExecutionBackend",
     "NullBackend",
     "PodmanBackend",
+    "TIERS",
     "TRANSITIONS",
     "SandboxInstance",
     "SandboxLifecycleManager",

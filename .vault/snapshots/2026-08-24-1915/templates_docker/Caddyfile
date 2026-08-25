@@ -1,0 +1,26 @@
+# Caddy reverse proxy for DAP — automatic Let's Encrypt TLS.
+# {$DAP_PUBLIC_HOST} is substituted from the environment (compose sets it).
+# The domain must resolve (A/AAAA) to this host for the HTTP-01 challenge.
+
+{$DAP_PUBLIC_HOST} {
+	encode zstd gzip
+
+	# Everything API/metrics/IDE-websocket related -> FastAPI
+	handle /api/* {
+		reverse_proxy api:8001
+	}
+	handle /docs {
+		reverse_proxy api:8001
+	}
+	handle /openapi.json {
+		reverse_proxy api:8001
+	}
+	handle /ws/* {
+		reverse_proxy api:8001
+	}
+
+	# Default: the live dashboard
+	handle {
+		reverse_proxy dashboard:8081
+	}
+}

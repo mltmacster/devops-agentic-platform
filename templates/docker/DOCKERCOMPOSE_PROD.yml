@@ -7,11 +7,15 @@
 #           caddy     (reverse proxy, automatic Let's Encrypt TLS)
 #
 # Usage (from the repo root's templates/docker directory):
-#   cp .env.template .env   # then fill in DAP_JWT_SECRET, DAP_PUBLIC_HOST, ...
-#   docker compose -f DOCKERCOMPOSE_PROD.yml up -d
+#   cp ../../.env.template .env   # then fill in DAP_JWT_SECRET, DAP_PUBLIC_HOST, ...
+#   docker compose -f DOCKERCOMPOSE_PROD.yml up -d --build
 #
 # Set DAP_PUBLIC_HOST to your domain (Caddy provisions TLS automatically
 # for HTTP-01 challenge; the domain must A-record to this host).
+#
+# Exposure: Caddy (80/443) is the ONLY public entry point. The api and
+# dashboard ports are NOT published to the host (SOLUTION 38) — the browser
+# reaches the dashboard on / and the API on /api/* through Caddy.
 
 name: dap
 
@@ -30,10 +34,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # 5432 is intentionally NOT published: only the api container talks to
+    # postgres, over the compose network. Publish it temporarily only for
+    # psql debugging.
 
   api:
     build:
-      context: ..
+      # Repo root (compose is run from templates/docker/ — see header & guide)
+      context: ../..
       dockerfile: templates/docker/Dockerfile
     restart: unless-stopped
     environment:
@@ -48,17 +56,38 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8001:8001"
+    # 8001 is intentionally NOT published (SOLUTION 38): Caddy is the sole
+    # public entry point. Debug with `docker compose logs api`, or add
+    # "8001:8001" under `ports:` temporarily.
+    #
+    # ── Real sandbox execution (OPTIONAL — see docs/DEPLOYMENT_GUIDE.md,
+    #    "Real sandbox execution in production") ─────────────────────────
+    # Inside the container `auto` resolves to the null (no-op) backend:
+    # sandbox records + state machine work, but no real container runs.
+    # To drive REAL podman containers on the host from inside this
+    # container, rebuild the image with a podman remote client, then:
+    #   volumes:
+    #     - /run/user/1000/podman/podman.sock:/run/podman/podman.sock:ro
+    #   environment additions:
+    #     DAP_SANDBOX_RUNTIME: "podman"
+    #     PODMAN_CONNECTION: "sock"
+    # (1000 = the host user that runs podman; must match.)
 
   dashboard:
     build:
-      context: ..
+      # Repo root (compose is run from templates/docker/ — see header & guide)
+      context: ../..
       dockerfile: templates/docker/Dockerfile
     restart: unless-stopped
     command: ["python", "dap_dashboard.py", "--port", "8081"]
     environment:
+      # Server-side (dashboard process → API over the compose network)
       DAP_API_URL: http://api:8001
+      # Browser-side: the delivered HTML must fetch the API same-origin
+      # (https://<host>/api/* via Caddy). An absolute http://api:8001 is
+      # unresolvable in the user's browser and mixed-content-blocked on an
+      # https page (SOLUTION 38). Empty = relative fetches.
+      DAP_BROWSER_API_URL: ""
     # image healthcheck probes the API port; override for this container
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8081/"]
@@ -67,8 +96,8 @@ services:
       retries: 3
     depends_on:
       - api
-    ports:
-      - "8081:8081"
+    # 8081 intentionally NOT published (SOLUTION 38): the dashboard is the
+    # Caddy default route; the browser reaches it through Caddy only.
 
   caddy:
     image: caddy:2-alpine

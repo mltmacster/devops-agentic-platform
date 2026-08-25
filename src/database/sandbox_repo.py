@@ -53,12 +53,21 @@ class SandboxRepository:
 
     # ─── UPDATE (state transitions) ──────────
 
-    async def update_state(self, sandbox_id: str, state: str) -> Optional[Sandbox]:
-        """Transition a sandbox to a new state."""
+    async def update_state(
+        self, sandbox_id: str, state: str, container_id: Optional[str] = None
+    ) -> Optional[Sandbox]:
+        """Transition a sandbox to a new state.
+
+        `container_id` (when not None) is persisted alongside the state so
+        the execution backend stays addressable across API restarts.
+        """
+        values = {"state": state}
+        if container_id is not None:
+            values["container_id"] = container_id
         stmt = (
             update(Sandbox)
             .where(Sandbox.id == sandbox_id)
-            .values(state=state)
+            .values(**values)
         )
         result = await self._session.execute(stmt)
         if result.rowcount == 0:

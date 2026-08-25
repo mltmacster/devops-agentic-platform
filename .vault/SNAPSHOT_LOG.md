@@ -112,6 +112,32 @@
 
 ---
 
+
+### [2026-08-25 02:30] SANDBOX+DEPLOY | SNAPSHOT | Live podman verify (30/30) + production deploy prep
+- **Description**: (1) Re-ran `dev-scripts/live_verify_sandbox.sh` on the WSL
+  Ubuntu 26.04 runtime host after the network-check fix — **30/30 ALL GREEN**
+  against real podman 5.7.0 (SOLUTION 37 acceptance). (2) First-ever run of the
+  production compose stack (Docker Desktop 29.7.2, `DAP_PUBLIC_HOST=localhost`):
+  found and fixed 5 blockers (SOLUTION 38: build context, healthcheck path,
+  dashboard JS sentinel + browser URL, port exposure, Caddyfile `/health`) and a
+  security gap (SOLUTION 39: strict-mode route guard + registration closure);
+  verified build, TLS, strict auth, dashboard, Postgres persistence, and the
+  `init_db` migration path, then tore down.
+- **Files Changed**:
+  - `templates/docker/DOCKERCOMPOSE_PROD.yml` (context `../..`, ports unpublished, podman-socket option block)
+  - `templates/docker/Dockerfile` (healthcheck `/health`)
+  - `templates/docker/Caddyfile` (`/health*` → api)
+  - `dap_dashboard.py` (`__DAP_BROWSER_API__` sentinel + `DAP_BROWSER_API_URL`)
+  - `docs/DEPLOYMENT_GUIDE.md` (`.env` placement, Caddy-only exposure, "Real sandbox execution in production")
+  - `src/api/auth/route_guard.py` (new — StrictAuthMiddleware)
+  - `src/api/auth/main.py` (registration closed in strict mode)
+  - `src/main.py` (middleware registration)
+  - `tests/test_route_guard.py` (new — 8 tests)
+  - Vault: `SOLUTIONS.md` (37–39), `VAULT_OVERVIEW.md`, `SNAPSHOT_LOG.md`, `AGENTS.md`, `HANDOFF.md`, `metrics/`
+- **Author**: Claude Bionic (handoff continuation)
+- **Tests**: 237 passed / 1 skipped on Windows venv 3.14.6 (was 229); live verify 30/30 (WSL, real podman)
+- **Snapshot Dir**: `.vault/snapshots/2026-08-25-deploy-prep/` (pre-change copies of all touched files)
+
 ## Snapshot Verification
 | ID | Status | Last Verified | Notes |
 |----|--------|---------------|-------|
@@ -123,3 +149,4 @@
 | 2026-08-24 00:23 | ✅ Validated | 2026-08-24 | All 187 tests pass |
 | 2026-08-24 14:30 | ✅ Validated | 2026-08-24 | 218/219 (1 Windows-only skip) · vault validation passed |
 | 2026-08-24 17:19 | ✅ Validated | 2026-08-24 | 219/219 in WSL CI replica (real podman present) · suite env-agnostic via tests/conftest.py |
+| 2026-08-25 02:30 | ✅ Validated | 2026-08-25 | 237/238 (1 Windows-only skip) · live verify 30/30 · compose dry run green · vault validation passed |

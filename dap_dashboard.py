@@ -17,7 +17,14 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.request import urlopen
 
 # ─── Config ──────────────────────
-DAP_API = os.environ.get("DAP_API_URL", "http://localhost:8001")  # override for containers
+DAP_API = os.environ.get("DAP_API_URL", "http://localhost:8001")  # override for containers (server-side: startup check, /metrics proxy)
+# Browser-side base URL for the delivered HTML. Defaults to DAP_API so local
+# dev (dashboard :8081 → API :8001) is unchanged. The production compose stack
+# sets it to empty: the page is served by Caddy over https, so the browser
+# must fetch the API same-origin (/api/* → Caddy → api:8001). An absolute
+# http://api:8001 is unresolvable from a user's browser and is blocked as
+# mixed content (SOLUTION 38).
+DAP_BROWSER_API = os.environ.get("DAP_BROWSER_API_URL", DAP_API)
 
 
 # ─── HTML Dashboard Template ────────────────
@@ -122,13 +129,13 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   <div class="footer" style="margin-top:40px;">
     <button class="btn-refresh" onclick="refresh()">Refresh Now</button>
     &nbsp;|&nbsp;
-    Data from: <a href="DAP_API/api/observability/metrics" target="_blank">Prometheus Metrics</a>
+    Data from: <a href="__DAP_BROWSER_API__/api/observability/metrics" target="_blank">Prometheus Metrics</a>
     &nbsp;|&nbsp;
-    IDE WS: <a href="DAP_API/api/ide" target="_blank">/api/ide</a>
+    IDE WS: <a href="__DAP_BROWSER_API__/api/ide" target="_blank">/api/ide</a>
   </div>
 
 <script>
-const DAP_API = 'DAP_API';
+const DAP_API = '__DAP_BROWSER_API__';
 const REFRESH_MS = 5000;
 
 function formatBytes(bytes) {
@@ -251,7 +258,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def _serve_dashboard(self):
-        html = DASHBOARD_HTML.replace('DAP_API', DAP_API)
+        # NOTE: the sentinel must be unambiguous — an earlier revision used the
+        # bare token 'DAP_API' and replaced the JS *identifier* too, producing
+        # `const http://localhost:8001 = ...` and a dead dashboard (SOLUTION 38).
+        html = DASHBOARD_HTML.replace('__DAP_BROWSER_API__', DAP_BROWSER_API)
 
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
@@ -271,6 +281,8 @@ def main():
 
     print(f'DAP Dashboard starting on http://localhost:{args.port}')
     print(f'DAP API endpoint: {DAP_API}')
+    if DAP_BROWSER_API != DAP_API:
+        print(f'DAP browser-side API URL: {DAP_BROWSER_API or "<same-origin relative>"}')
     
     # Health check to verify DAP connection
     try:

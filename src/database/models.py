@@ -106,7 +106,8 @@ class Sandbox(Base):
         String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
     )
     stack: Mapped[str] = mapped_column(String(20), nullable=False)  # python, rust, nodejs, ml
-    state: Mapped[str] = mapped_column(String(20), nullable=False, default='creating')  # creating, running, stopped, suspended
+    state: Mapped[str] = mapped_column(String(20), nullable=False, default='creating')  # creating, running, stopped, suspended, error
+    container_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)  # backend container id (None = create failed)
     cpu_cores_used: Mapped[float] = mapped_column(Float, default=0.0)
     memory_mb_used: Mapped[int] = mapped_column(Integer, default=0)
     disk_gb_used: Mapped[float] = mapped_column(Float, default=0.0)

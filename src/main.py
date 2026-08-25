@@ -15,6 +15,9 @@ from pydantic import BaseModel, Field
 from src.database import init_db
 from src.sandbox_engine import SandboxLifecycleManager
 
+# ─── Strict-mode route guard (SOLUTION 39) ──
+from src.api.auth.route_guard import StrictAuthMiddleware
+
 # ─── Microservices (import each service's app) ──
 from src.api.auth.main import app as auth_app
 from src.api.workspace.main import app as workspace_app
@@ -60,6 +63,11 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
+
+# ─── Strict-mode route guard (SOLUTION 39) ──────────────
+# Added BEFORE the CORS registration so CORS stays outermost and its
+# headers still frame the guard's 401 responses. No-op in dev mode.
+app.add_middleware(StrictAuthMiddleware)
 
 # ─── CORS Middleware ──────────────
 app.add_middleware(

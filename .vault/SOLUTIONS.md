@@ -824,3 +824,140 @@ containerless sandbox (`container_id=None`) still parks ERROR via
 **Verification**: Reproduced the exit-125 failure against real podman in the
 WSL replica before the fix; after, the full fake-podman lifecycle test and the
 whole 219-test suite pass with podman installed on the host.
+
+## Solution 37: Sandbox API Never Drove the Runtime — Engine Wired In + `container_id` Persistence
+**Date**: 2026-08-25 (discovered 2026-08-24; live-verified 2026-08-25)
+
+**Problem**: With podman installed, the sandbox API still never created a
+single real container. `POST /sandboxes` returned a record whose `state`
+string the DB updated, but create/start/stop/suspend/resume/delete only
+moved that string — no `container_id` column existed and
+`SandboxLifecycleManager` tracked containers in an in-memory registry the
+API never consulted.
+
+**Root cause**: The state machine (DB) and the execution backend
+(`src/sandbox_engine/`) were built as two disconnected systems; the API
+routed between neither.
+
+**Solution**:
+1. `Sandbox.container_id` (nullable `String(64)`) + idempotent
+   `ALTER TABLE ... ADD COLUMN` in `init_db()` for pre-existing databases
+   (both SQLite and PostgreSQL support nullable `ADD COLUMN`;
+   `create_all` only creates missing tables, never alters).
+2. New stateless `SandboxLifecycleManager.execute_op(op, sandbox_id,
+   container_id)` — the DB is the source of truth, the process registry is
+   ephemeral across restarts, so the API passes the *persisted*
+   container_id and reuses the exact state-tolerant wrappers from
+   Solutions 31/36. Unknown ops raise; backend failures return False.
+3. API ops run via `asyncio.to_thread` (sync subprocess, off the event
+   loop); a failed op commits `state='error'` explicitly (the session
+   context would otherwise roll back on the 502) then returns 502.
+   Create failure parks the row in `error` (still trackable/deletable)
+   with a 201 + `status="error"` + `container_id=null`.
+4. `PodmanBackend.create` gained `--pull missing` + a 600s timeout (fresh
+   hosts pull the base image once).
+5. `tier` on `CreateSandboxRequest` validated against the module-level
+   `TIERS` map; `container_id` exposed in create/status responses.
+6. `tests/fake_backends.py` — shared `FakeStateBackend` emulating real
+   podman state semantics for cross-platform coverage.
+
+**Verification**: `dev-scripts/live_verify_sandbox.sh` against real podman
+5.7.0 in WSL Ubuntu 26.04: **30/30** — real container
+create/start/`uname -r` exec/pause/resume/stop, drift → 502 + `error`,
+API-restart durability (persisted `container_id` driveable with an empty
+registry), functional `--network none` proof (`/sys/class/net` == `lo`).
+Suite 237 passed / 1 skipped (Windows venv 3.14.6).
+
+**Prevention**: any new execution backend must implement the
+`ExecutionBackend` protocol *and* be exercised through `execute_op`; the
+live-verify script is the acceptance gate on a podman host.
+
+## Solution 38: Production Compose Stack — Five First-Deploy Blockers
+**Date**: 2026-08-25
+
+**Problem**: The compose stack from the 2026-08-24 production build
+(`3290e77`) had never actually been run. A Docker-Desktop dry run
+(`DAP_PUBLIC_HOST=localhost`, internal CA) exposed five blockers in
+sequence:
+
+1. **Build failed**: `context: ..` + `dockerfile: templates/docker/Dockerfile`
+   resolves to `templates/templates/docker/Dockerfile` — the Dockerfile
+   needs the repo root as context. → `context: ../..` (compose runs from
+   `templates/docker/`, per the header + guide).
+2. **api container unhealthy forever**: the image healthcheck probed
+   `http://localhost:8001/api/health`, which 404s — the app's global
+   health route is `/health`. → healthcheck fixed.
+3. **Dashboard dead in the browser**: `DASHBOARD_HTML.replace('DAP_API',
+   ...)` replaced the bare token *and* the JS identifier, delivering
+   `const http://localhost:8001 = '...'` — a SyntaxError that kills the
+   whole script (silent dead cards; it was already breaking the local
+   preview). Worse, `DAP_API_URL=http://api:8001` is unresolvable in a
+   user's browser and mixed-content-blocked on an https page. →
+   unambiguous `__DAP_BROWSER_API__` sentinel + new
+   `DAP_BROWSER_API_URL` (defaults to `DAP_API_URL` so local dev is
+   unchanged; the compose stack sets it empty → same-origin `/api/*`
+   fetches via Caddy).
+4. **api/dashboard publicly exposed**: `8001`/`8081` were published on
+   `0.0.0.0`, bypassing the TLS entry point and colliding with local
+   previews. → port publishes removed; Caddy is the only public surface.
+5. **Caddy routed `/health` to the dashboard** (404): no `handle
+   /health*` block → added. Plus a doc bug: the guide's `cp
+   .env.template .env` pointed at the repo root, but compose auto-loads
+   `.env` from the project directory → guide now says `cp
+   .env.template templates/docker/.env`.
+
+**Verification**: full dry run on Docker Desktop 29.7.2 — build OK; all 4
+containers healthy; 80→443 redirect; Caddy internal CA for `localhost`;
+strict auth end-to-end (anon 401 on data routes, register 201 → 403
+closed, login 200/401, `/me` admin, token 200); dashboard page + its
+anonymous metrics poll both 200 with valid JS (`const DAP_API = ''`);
+8001/8081 not published (`docker port` empty); Postgres persistence
+(workspace + JWT survive `docker restart api`); `init_db` lightweight
+migration re-adds a dropped `container_id` column on real PostgreSQL.
+Stack torn down after verification (volumes + throwaway `.env` removed).
+
+**Prevention**: run the `templates/docker/` compose dry run on any change
+to the Dockerfile/Caddyfile/compose (a `localhost` `.env` takes minutes);
+never substitute a bare identifier for a template token.
+
+## Solution 39: Strict Auth Guarded Only the Auth Routes — Data Routes Were Wide Open
+**Date**: 2026-08-25
+
+**Problem**: With `DAP_AUTH_STRICT=1` deployed, anonymous visitors could
+still `GET/POST /api/workspace/*`, `/api/sandbox/*`, `/api/ide/*`,
+`/api/agentic/*` — the 2026-08-24 "real auth persistence" work
+(Solutions 28–33) made register/login/refresh/me consult the user store,
+but the data routers carry no auth dependency. In production an anonymous
+visitor could create real containers (with tier quotas) and burn LLM
+credits. (Confirmed live in the dry run before the fix: anonymous
+`GET /api/workspace/workspaces` → 200.)
+
+**Root cause**: Strict mode was implemented as endpoint-internal logic in
+`src/api/auth/main.py` (login/refresh/me fail closed) and never as a
+route-level policy; the deployment guide's promise — "all other routes
+require the signed JWT" — was documentation ahead of code.
+
+**Solution**:
+1. `src/api/auth/route_guard.py` — `StrictAuthMiddleware` (pure ASGI, so
+   it also sees websocket scopes). When `DAP_AUTH_STRICT=1`: HTTP routes
+   require a valid signed JWT access token (`Authorization: Bearer`),
+   websockets require `?token=` (browsers cannot set WS headers); public
+   allowlist = `/`, docs/openapi, any `*health*` probe,
+   `/api/auth/auth/*` (the self-guarding auth flow), and the dashboard's
+   two anonymous polls (`/api/observability/metrics`,
+   `/api/observability/health`). Dev mode: no-op, preserving fail-open
+   previews and the test suite. Registered in `src/main.py` before the
+   CORS middleware so CORS headers still frame the 401s.
+2. Registration closed in strict mode once any user exists (403) — open
+   self-service sign-up let an attacker register before the operator and
+   claim the first-user-admin role.
+
+**Verification**: `tests/test_route_guard.py` (8 tests, full monolith):
+anon 401 on workspace/sandbox/ide/agentic in strict; garbage token 401;
+valid token 200; allowlist open; register 201 → 403 closed; dev mode
+unchanged. Full suite 237 passed / 1 skipped. The compose dry run was
+re-verified through Caddy after the guard landed (SOLUTION 38 checks).
+
+**Prevention**: new routers are reachable only via the guard in
+production; the public allowlist is deliberately small — extend it
+deliberately, with a test per addition.

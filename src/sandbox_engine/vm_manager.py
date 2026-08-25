@@ -77,6 +77,16 @@ class SandboxResourceQuota:
     max_concurrent_sandboxes: int = 1
 
 
+# Resource limits per tier (module-level so the API can validate and read
+# quotas without instantiating a manager).
+TIERS: Dict[str, SandboxResourceQuota] = {
+    "basic": SandboxResourceQuota(cpu_cores=1.0, memory_gb=2.0, disk_gb=10.0),
+    "pro": SandboxResourceQuota(cpu_cores=4.0, memory_gb=8.0, disk_gb=50.0),
+    "enterprise": SandboxResourceQuota(cpu_cores=8.0, memory_gb=16.0, disk_gb=200.0),
+    "ga": SandboxResourceQuota(cpu_cores=16.0, memory_gb=32.0, disk_gb=500.0),
+}
+
+
 @dataclass
 class SandboxInstance:
     """Represents a sandbox VM instance."""
@@ -107,17 +117,19 @@ class SandboxLifecycleManager:
     def runtime(self) -> str:
         return self.backend.name
 
-    def create_sandbox(self, tier: str = "basic") -> SandboxInstance:
-        """Create a new sandbox instance (container created, not started)."""
-        quota_map = {
-            "basic": SandboxResourceQuota(cpu_cores=1.0, memory_gb=2.0, disk_gb=10.0),
-            "pro": SandboxResourceQuota(cpu_cores=4.0, memory_gb=8.0, disk_gb=50.0),
-            "enterprise": SandboxResourceQuota(cpu_cores=8.0, memory_gb=16.0, disk_gb=200.0),
-            "ga": SandboxResourceQuota(cpu_cores=16.0, memory_gb=32.0, disk_gb=500.0),
-        }
+    def create_sandbox(self, tier: str = "basic", sandbox_id: Optional[str] = None) -> SandboxInstance:
+        """Create a new sandbox instance (container created, not started).
 
-        quota = quota_map.get(tier, SandboxResourceQuota())
-        instance = SandboxInstance(tier=tier, resources=quota, runtime=self.backend.name)
+        `sandbox_id` may be supplied by a caller that owns its own registry
+        (e.g. the DB-backed sandbox API); otherwise a UUID is generated.
+        """
+        quota = TIERS.get(tier, SandboxResourceQuota())
+        instance = SandboxInstance(
+            id=sandbox_id or str(uuid.uuid4()),
+            tier=tier,
+            resources=quota,
+            runtime=self.backend.name,
+        )
 
         container_id = self.backend.create(
             instance.id, DEFAULT_IMAGE, quota.memory_gb, quota.cpu_cores
@@ -265,6 +277,50 @@ class SandboxLifecycleManager:
 
         sandbox.status = target
         return sandbox
+
+    # Map execute_op names to the plain backend op used when the sandbox has
+    # no container (a real backend whose create failed): every one of these
+    # must fail so the caller can park the sandbox in ERROR.
+    _NO_CONTAINER_OPS = {
+        "start": "start",
+        "stop": "stop",
+        "suspend": "pause",
+        "resume": "unpause",
+    }
+
+    def execute_op(self, op: str, sandbox_id: str, container_id: Optional[str]) -> bool:
+        """Run a state-tolerant lifecycle op without registry state.
+
+        The sandbox API is the source of truth (PostgreSQL) while this
+        process's in-memory registry is ephemeral across restarts, so the
+        API calls this with the persisted `container_id` instead of relying
+        on `start_sandbox()` & co. Reuses the exact state-tolerant wrappers
+        (`_start_backend`/`_stop_backend`) that the registry methods use.
+
+        `op` is one of: start, stop, suspend, resume, remove.
+        Never raises; returns False when the backend op fails.
+        """
+        inst = SandboxInstance(id=sandbox_id, container_id=container_id, runtime=self.runtime)
+
+        if container_id is None:
+            if op == "remove":
+                return True  # no container exists; nothing to remove
+            plain = self._NO_CONTAINER_OPS.get(op)
+            if plain is None:
+                raise ValueError(f"unknown op {op!r}")
+            return self._backend_op(inst, plain)  # parks ERROR, returns False
+
+        if op in ("start", "resume"):
+            return self._start_backend(inst)
+        if op == "stop":
+            return self._stop_backend(inst)
+        if op == "suspend":
+            if self.backend.state(container_id) == "running":
+                return self._backend_op(inst, "pause")
+            return True  # already exited/created — bookkeeping only (SOLUTION 36)
+        if op == "remove":
+            return self.backend.remove(container_id)
+        raise ValueError(f"unknown op {op!r}")
 
     def get_sandbox(self, sandbox_id: str) -> Optional[SandboxInstance]:
         """Get a sandbox by ID."""

@@ -161,11 +161,22 @@ async def register(
     payload: RegisterRequest,
     session=Depends(get_session_dependency),
 ):
-    """Create an account. The first registered user becomes admin."""
+    """Create an account. The first registered user becomes admin.
+
+    Strict mode closes registration once any user exists (SOLUTION 39):
+    open self-service sign-up would let an attacker register before the
+    operator and claim the first-user-admin role.
+    """
     repo = UserRepository(session)
 
     if await repo.get_by_email(payload.email):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+
+    if _auth_strict() and await repo.count() >= 1:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Registration is closed (production strict auth). Ask an admin for an account.",
+        )
 
     role = payload.role.strip().lower() or ("admin" if await repo.count() == 0 else "developer")
     user = await repo.create(payload.email, hash_password(payload.password), role)
