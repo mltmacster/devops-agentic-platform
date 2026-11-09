@@ -1,0 +1,2950 @@
+{
+  "status": "analyzed",
+  "directory": "review scope: changed live Python files from commit a1f2a8c (excludes vault snapshot artifact copies)",
+  "files_analyzed": 15,
+  "average_score": 87.3,
+  "overall_grade": "B",
+  "total_code_smells": 130,
+  "total_solid_violations": 1,
+  "files": [
+    {
+      "file": "src\\api\\auth\\route_guard.py",
+      "language": "python",
+      "status": "added",
+      "metrics": {
+        "lines": {
+          "total": 117,
+          "code": 87,
+          "blank": 20,
+          "comment": 10
+        },
+        "functions": 5,
+        "classes": 1,
+        "avg_complexity": 5.8
+      },
+      "quality_score": 98,
+      "grade": "A",
+      "smells": [
+        {
+          "type": "high_complexity",
+          "severity": "medium",
+          "message": "Function '__call__' has complexity 14 (max: 10)",
+          "location": "__call__"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 401 should be a named constant",
+          "location": "line 97"
+        }
+      ],
+      "solid_violations": [],
+      "function_details": [
+        {
+          "name": "_is_public_path",
+          "parameters": 1,
+          "lines": 20,
+          "complexity": 6
+        },
+        {
+          "name": "__init__",
+          "parameters": 2,
+          "lines": 4,
+          "complexity": 1
+        },
+        {
+          "name": "__call__",
+          "parameters": 4,
+          "lines": 39,
+          "complexity": 14
+        },
+        {
+          "name": "_bearer_token",
+          "parameters": 1,
+          "lines": 7,
+          "complexity": 4
+        },
+        {
+          "name": "_query_token",
+          "parameters": 1,
+          "lines": 7,
+          "complexity": 4
+        }
+      ],
+      "class_details": [
+        {
+          "name": "StrictAuthMiddleware",
+          "methods": 4,
+          "lines": 63
+        }
+      ]
+    },
+    {
+      "file": "tests\\fake_backends.py",
+      "language": "python",
+      "status": "added",
+      "metrics": {
+        "lines": {
+          "total": 93,
+          "code": 64,
+          "blank": 20,
+          "comment": 9
+        },
+        "functions": 11,
+        "classes": 1,
+        "avg_complexity": 1.7
+      },
+      "quality_score": 100,
+      "grade": "A",
+      "smells": [
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 125 should be a named constant",
+          "location": "line 6"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 125 should be a named constant",
+          "location": "line 31"
+        }
+      ],
+      "solid_violations": [],
+      "function_details": [
+        {
+          "name": "__init__",
+          "parameters": 1,
+          "lines": 7,
+          "complexity": 1
+        },
+        {
+          "name": "_allowed",
+          "parameters": 3,
+          "lines": 18,
+          "complexity": 3
+        },
+        {
+          "name": "available",
+          "parameters": 1,
+          "lines": 4,
+          "complexity": 1
+        },
+        {
+          "name": "create",
+          "parameters": 5,
+          "lines": 7,
+          "complexity": 1
+        },
+        {
+          "name": "state",
+          "parameters": 2,
+          "lines": 4,
+          "complexity": 1
+        },
+        {
+          "name": "start",
+          "parameters": 2,
+          "lines": 8,
+          "complexity": 2
+        },
+        {
+          "name": "stop",
+          "parameters": 2,
+          "lines": 8,
+          "complexity": 2
+        },
+        {
+          "name": "pause",
+          "parameters": 2,
+          "lines": 8,
+          "complexity": 2
+        },
+        {
+          "name": "unpause",
+          "parameters": 2,
+          "lines": 8,
+          "complexity": 2
+        },
+        {
+          "name": "remove",
+          "parameters": 2,
+          "lines": 8,
+          "complexity": 1
+        }
+      ],
+      "class_details": [
+        {
+          "name": "FakeStateBackend",
+          "methods": 11,
+          "lines": 82
+        }
+      ]
+    },
+    {
+      "file": "tests\\test_route_guard.py",
+      "language": "python",
+      "status": "added",
+      "metrics": {
+        "lines": {
+          "total": 148,
+          "code": 99,
+          "blank": 42,
+          "comment": 7
+        },
+        "functions": 13,
+        "classes": 0,
+        "avg_complexity": 1.0
+      },
+      "quality_score": 67,
+      "grade": "D",
+      "smells": [
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 63"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 201 should be a named constant",
+          "location": "line 70"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 201 should be a named constant",
+          "location": "line 71"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 401 should be a named constant",
+          "location": "line 81"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 401 should be a named constant",
+          "location": "line 82"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 401 should be a named constant",
+          "location": "line 83"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 401 should be a named constant",
+          "location": "line 84"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 401 should be a named constant",
+          "location": "line 95"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 201 should be a named constant",
+          "location": "line 102"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 106"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 112"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 122"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 123"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 124"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 125"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 126"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 201 should be a named constant",
+          "location": "line 136"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 403 should be a named constant",
+          "location": "line 138"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 201 should be a named constant",
+          "location": "line 147"
+        }
+      ],
+      "solid_violations": [],
+      "function_details": [
+        {
+          "name": "strict",
+          "parameters": 1,
+          "lines": 7,
+          "complexity": 1
+        },
+        {
+          "name": "dev",
+          "parameters": 1,
+          "lines": 6,
+          "complexity": 1
+        },
+        {
+          "name": "_client",
+          "parameters": 0,
+          "lines": 5,
+          "complexity": 1
+        },
+        {
+          "name": "_fresh_db",
+          "parameters": 0,
+          "lines": 6,
+          "complexity": 1
+        },
+        {
+          "name": "_register",
+          "parameters": 2,
+          "lines": 12,
+          "complexity": 1
+        },
+        {
+          "name": "test_dev_mode_anonymous_data_route_ok",
+          "parameters": 1,
+          "lines": 8,
+          "complexity": 1
+        },
+        {
+          "name": "test_dev_mode_open_registration",
+          "parameters": 1,
+          "lines": 12,
+          "complexity": 1
+        },
+        {
+          "name": "test_strict_blocks_anonymous_data_routes",
+          "parameters": 1,
+          "lines": 11,
+          "complexity": 1
+        },
+        {
+          "name": "test_strict_rejects_garbage_token",
+          "parameters": 1,
+          "lines": 12,
+          "complexity": 1
+        },
+        {
+          "name": "test_strict_allows_valid_token",
+          "parameters": 1,
+          "lines": 21,
+          "complexity": 1
+        }
+      ],
+      "class_details": []
+    },
+    {
+      "file": "dap_dashboard.py",
+      "language": "python",
+      "status": "modified",
+      "metrics": {
+        "lines": {
+          "total": 303,
+          "code": 223,
+          "blank": 58,
+          "comment": 22
+        },
+        "functions": 4,
+        "classes": 1,
+        "avg_complexity": 3.5
+      },
+      "quality_score": 63,
+      "grade": "D",
+      "smells": [
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 8081 should be a named constant",
+          "location": "line 8"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 9090 should be a named constant",
+          "location": "line 9"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 8001 should be a named constant",
+          "location": "line 20"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 600 should be a named constant",
+          "location": "line 78"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 100 should be a named constant",
+          "location": "line 82"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 700 should be a named constant",
+          "location": "line 96"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 600 should be a named constant",
+          "location": "line 103"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 100 should be a named constant",
+          "location": "line 105"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 100 should be a named constant",
+          "location": "line 106"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 5000 should be a named constant",
+          "location": "line 139"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 1024 should be a named constant",
+          "location": "line 142"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 1024 should be a named constant",
+          "location": "line 143"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 1024 should be a named constant",
+          "location": "line 144"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 1024 should be a named constant",
+          "location": "line 145"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 600 should be a named constant",
+          "location": "line 190"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 100 should be a named constant",
+          "location": "line 191"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 248"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 502 should be a named constant",
+          "location": "line 253"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 404 should be a named constant",
+          "location": "line 257"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 266"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 8081 should be a named constant",
+          "location": "line 279"
+        }
+      ],
+      "solid_violations": [],
+      "function_details": [
+        {
+          "name": "do_GET",
+          "parameters": 1,
+          "lines": 19,
+          "complexity": 5
+        },
+        {
+          "name": "_serve_dashboard",
+          "parameters": 1,
+          "lines": 12,
+          "complexity": 3
+        },
+        {
+          "name": "log_message",
+          "parameters": 3,
+          "lines": 7,
+          "complexity": 1
+        },
+        {
+          "name": "main",
+          "parameters": 0,
+          "lines": 27,
+          "complexity": 5
+        }
+      ],
+      "class_details": [
+        {
+          "name": "DashboardHandler",
+          "methods": 4,
+          "lines": 63
+        }
+      ]
+    },
+    {
+      "file": "src\\api\\auth\\main.py",
+      "language": "python",
+      "status": "modified",
+      "metrics": {
+        "lines": {
+          "total": 359,
+          "code": 246,
+          "blank": 74,
+          "comment": 39
+        },
+        "functions": 10,
+        "classes": 9,
+        "avg_complexity": 4.7
+      },
+      "quality_score": 95,
+      "grade": "A",
+      "smells": [
+        {
+          "type": "long_function",
+          "severity": "medium",
+          "message": "Function 'check_permission' has 54 lines (max: 50)",
+          "location": "check_permission"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 128 should be a named constant",
+          "location": "line 66"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 401 should be a named constant",
+          "location": "line 202"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 401 should be a named constant",
+          "location": "line 267"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 123 should be a named constant",
+          "location": "line 276"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 456 should be a named constant",
+          "location": "line 280"
+        }
+      ],
+      "solid_violations": [],
+      "function_details": [
+        {
+          "name": "_auth_strict",
+          "parameters": 0,
+          "lines": 11,
+          "complexity": 2
+        },
+        {
+          "name": "get_session_dependency",
+          "parameters": 0,
+          "lines": 7,
+          "complexity": 1
+        },
+        {
+          "name": "_bearer_user",
+          "parameters": 2,
+          "lines": 29,
+          "complexity": 5
+        },
+        {
+          "name": "register",
+          "parameters": 2,
+          "lines": 32,
+          "complexity": 10
+        },
+        {
+          "name": "login",
+          "parameters": 2,
+          "lines": 37,
+          "complexity": 8
+        },
+        {
+          "name": "refresh",
+          "parameters": 1,
+          "lines": 32,
+          "complexity": 7
+        },
+        {
+          "name": "get_profile",
+          "parameters": 2,
+          "lines": 29,
+          "complexity": 4
+        },
+        {
+          "name": "check_permission",
+          "parameters": 1,
+          "lines": 54,
+          "complexity": 6
+        },
+        {
+          "name": "health_live",
+          "parameters": 0,
+          "lines": 7,
+          "complexity": 1
+        },
+        {
+          "name": "health_ready",
+          "parameters": 0,
+          "lines": 11,
+          "complexity": 3
+        }
+      ],
+      "class_details": [
+        {
+          "name": "LoginRequest",
+          "methods": 0,
+          "lines": 7
+        },
+        {
+          "name": "LoginResponse",
+          "methods": 0,
+          "lines": 8
+        },
+        {
+          "name": "RefreshRequest",
+          "methods": 0,
+          "lines": 6
+        },
+        {
+          "name": "RefreshResponse",
+          "methods": 0,
+          "lines": 8
+        },
+        {
+          "name": "UserProfile",
+          "methods": 0,
+          "lines": 10
+        },
+        {
+          "name": "RegisterRequest",
+          "methods": 0,
+          "lines": 8
+        },
+        {
+          "name": "RBACCheckRequest",
+          "methods": 0,
+          "lines": 9
+        },
+        {
+          "name": "RBACCheckResponse",
+          "methods": 0,
+          "lines": 11
+        },
+        {
+          "name": "AuthUserResponse",
+          "methods": 10,
+          "lines": 272
+        }
+      ]
+    },
+    {
+      "file": "src\\api\\sandbox\\main.py",
+      "language": "python",
+      "status": "modified",
+      "metrics": {
+        "lines": {
+          "total": 396,
+          "code": 285,
+          "blank": 69,
+          "comment": 42
+        },
+        "functions": 13,
+        "classes": 4,
+        "avg_complexity": 4.2
+      },
+      "quality_score": 96,
+      "grade": "A",
+      "smells": [
+        {
+          "type": "long_function",
+          "severity": "medium",
+          "message": "Function 'create_sandbox' has 74 lines (max: 50)",
+          "location": "create_sandbox"
+        },
+        {
+          "type": "high_complexity",
+          "severity": "medium",
+          "message": "Function 'create_sandbox' has complexity 12 (max: 10)",
+          "location": "create_sandbox"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 404 should be a named constant",
+          "location": "line 109"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 502 should be a named constant",
+          "location": "line 261"
+        }
+      ],
+      "solid_violations": [],
+      "function_details": [
+        {
+          "name": "get_session_dependency",
+          "parameters": 0,
+          "lines": 12,
+          "complexity": 1
+        },
+        {
+          "name": "_get_engine",
+          "parameters": 0,
+          "lines": 9,
+          "complexity": 2
+        },
+        {
+          "name": "_run_engine_op",
+          "parameters": 3,
+          "lines": 6,
+          "complexity": 1
+        },
+        {
+          "name": "_validate_transition",
+          "parameters": 4,
+          "lines": 32,
+          "complexity": 6
+        },
+        {
+          "name": "create_sandbox",
+          "parameters": 2,
+          "lines": 74,
+          "complexity": 12
+        },
+        {
+          "name": "get_sandbox_status",
+          "parameters": 2,
+          "lines": 32,
+          "complexity": 3
+        },
+        {
+          "name": "start_sandbox",
+          "parameters": 2,
+          "lines": 27,
+          "complexity": 6
+        },
+        {
+          "name": "stop_sandbox",
+          "parameters": 2,
+          "lines": 28,
+          "complexity": 6
+        },
+        {
+          "name": "suspend_sandbox",
+          "parameters": 2,
+          "lines": 28,
+          "complexity": 6
+        },
+        {
+          "name": "resume_sandbox",
+          "parameters": 2,
+          "lines": 28,
+          "complexity": 4
+        }
+      ],
+      "class_details": [
+        {
+          "name": "CreateSandboxRequest",
+          "methods": 0,
+          "lines": 9
+        },
+        {
+          "name": "CreateSandboxResponse",
+          "methods": 0,
+          "lines": 13
+        },
+        {
+          "name": "SandboxStatus",
+          "methods": 0,
+          "lines": 12
+        },
+        {
+          "name": "ResourceUsage",
+          "methods": 13,
+          "lines": 335
+        }
+      ]
+    },
+    {
+      "file": "src\\database\\__init__.py",
+      "language": "python",
+      "status": "modified",
+      "metrics": {
+        "lines": {
+          "total": 146,
+          "code": 86,
+          "blank": 38,
+          "comment": 22
+        },
+        "functions": 7,
+        "classes": 0,
+        "avg_complexity": 5.0
+      },
+      "quality_score": 100,
+      "grade": "A",
+      "smells": [
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 5432 should be a named constant",
+          "location": "line 44"
+        },
+        {
+          "type": "commented_code",
+          "severity": "low",
+          "message": "Commented-out code should be removed",
+          "location": "line 39"
+        }
+      ],
+      "solid_violations": [],
+      "function_details": [
+        {
+          "name": "_get_database_url",
+          "parameters": 0,
+          "lines": 17,
+          "complexity": 6
+        },
+        {
+          "name": "get_engine",
+          "parameters": 0,
+          "lines": 19,
+          "complexity": 7
+        },
+        {
+          "name": "get_session_factory",
+          "parameters": 0,
+          "lines": 19,
+          "complexity": 4
+        },
+        {
+          "name": "get_session",
+          "parameters": 0,
+          "lines": 26,
+          "complexity": 5
+        },
+        {
+          "name": "_apply_lightweight_migrations",
+          "parameters": 1,
+          "lines": 17,
+          "complexity": 8
+        },
+        {
+          "name": "init_db",
+          "parameters": 0,
+          "lines": 14,
+          "complexity": 3
+        },
+        {
+          "name": "drop_db",
+          "parameters": 0,
+          "lines": 10,
+          "complexity": 2
+        }
+      ],
+      "class_details": []
+    },
+    {
+      "file": "src\\database\\models.py",
+      "language": "python",
+      "status": "modified",
+      "metrics": {
+        "lines": {
+          "total": 141,
+          "code": 84,
+          "blank": 37,
+          "comment": 20
+        },
+        "functions": 3,
+        "classes": 7,
+        "avg_complexity": 2.0
+      },
+      "quality_score": 100,
+      "grade": "A",
+      "smells": [
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 128 should be a named constant",
+          "location": "line 79"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 255 should be a named constant",
+          "location": "line 129"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 255 should be a named constant",
+          "location": "line 130"
+        }
+      ],
+      "solid_violations": [],
+      "function_details": [
+        {
+          "name": "seed",
+          "parameters": 2,
+          "lines": 28,
+          "complexity": 3
+        },
+        {
+          "name": "sandbox_count",
+          "parameters": 1,
+          "lines": 46,
+          "complexity": 2
+        },
+        {
+          "name": "seed_all",
+          "parameters": 1,
+          "lines": 4,
+          "complexity": 1
+        }
+      ],
+      "class_details": [
+        {
+          "name": "Base",
+          "methods": 0,
+          "lines": 6
+        },
+        {
+          "name": "WorkspaceTier",
+          "methods": 0,
+          "lines": 9
+        },
+        {
+          "name": "WorkspaceStatus",
+          "methods": 0,
+          "lines": 18
+        },
+        {
+          "name": "WorkspaceQuota",
+          "methods": 1,
+          "lines": 20
+        },
+        {
+          "name": "Workspace",
+          "methods": 1,
+          "lines": 27
+        },
+        {
+          "name": "Sandbox",
+          "methods": 0,
+          "lines": 25
+        },
+        {
+          "name": "User",
+          "methods": 1,
+          "lines": 19
+        }
+      ]
+    },
+    {
+      "file": "src\\database\\sandbox_repo.py",
+      "language": "python",
+      "status": "modified",
+      "metrics": {
+        "lines": {
+          "total": 88,
+          "code": 55,
+          "blank": 20,
+          "comment": 13
+        },
+        "functions": 6,
+        "classes": 1,
+        "avg_complexity": 1.7
+      },
+      "quality_score": 100,
+      "grade": "A",
+      "smells": [],
+      "solid_violations": [],
+      "function_details": [
+        {
+          "name": "__init__",
+          "parameters": 2,
+          "lines": 6,
+          "complexity": 1
+        },
+        {
+          "name": "create",
+          "parameters": 3,
+          "lines": 16,
+          "complexity": 1
+        },
+        {
+          "name": "get_by_id",
+          "parameters": 2,
+          "lines": 8,
+          "complexity": 1
+        },
+        {
+          "name": "list_by_workspace",
+          "parameters": 3,
+          "lines": 12,
+          "complexity": 2
+        },
+        {
+          "name": "update_state",
+          "parameters": 4,
+          "lines": 26,
+          "complexity": 4
+        },
+        {
+          "name": "delete",
+          "parameters": 2,
+          "lines": 6,
+          "complexity": 1
+        }
+      ],
+      "class_details": [
+        {
+          "name": "SandboxRepository",
+          "methods": 6,
+          "lines": 74
+        }
+      ]
+    },
+    {
+      "file": "src\\main.py",
+      "language": "python",
+      "status": "modified",
+      "metrics": {
+        "lines": {
+          "total": 391,
+          "code": 252,
+          "blank": 96,
+          "comment": 43
+        },
+        "functions": 15,
+        "classes": 2,
+        "avg_complexity": 2.5
+      },
+      "quality_score": 97,
+      "grade": "A",
+      "smells": [
+        {
+          "type": "long_function",
+          "severity": "medium",
+          "message": "Function 'lifespan' has 75 lines (max: 50)",
+          "location": "lifespan"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 8000 should be a named constant",
+          "location": "line 6"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 8080 should be a named constant",
+          "location": "line 173"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 404 should be a named constant",
+          "location": "line 202"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 365 should be a named constant",
+          "location": "line 310"
+        }
+      ],
+      "solid_violations": [],
+      "function_details": [
+        {
+          "name": "lifespan",
+          "parameters": 1,
+          "lines": 75,
+          "complexity": 6
+        },
+        {
+          "name": "network_root",
+          "parameters": 0,
+          "lines": 26,
+          "complexity": 2
+        },
+        {
+          "name": "router_config",
+          "parameters": 1,
+          "lines": 10,
+          "complexity": 2
+        },
+        {
+          "name": "update_router_config",
+          "parameters": 1,
+          "lines": 10,
+          "complexity": 1
+        },
+        {
+          "name": "router_status",
+          "parameters": 0,
+          "lines": 17,
+          "complexity": 3
+        },
+        {
+          "name": "register_sandbox",
+          "parameters": 4,
+          "lines": 24,
+          "complexity": 1
+        },
+        {
+          "name": "deregister_sandbox",
+          "parameters": 1,
+          "lines": 13,
+          "complexity": 2
+        },
+        {
+          "name": "list_sandboxes",
+          "parameters": 1,
+          "lines": 23,
+          "complexity": 2
+        },
+        {
+          "name": "generate_dns_records",
+          "parameters": 2,
+          "lines": 24,
+          "complexity": 3
+        },
+        {
+          "name": "export_dns_zone_file",
+          "parameters": 2,
+          "lines": 15,
+          "complexity": 1
+        }
+      ],
+      "class_details": [
+        {
+          "name": "RouterConfig",
+          "methods": 0,
+          "lines": 6
+        },
+        {
+          "name": "RouterStatus",
+          "methods": 14,
+          "lines": 288
+        }
+      ]
+    },
+    {
+      "file": "src\\sandbox_engine\\__init__.py",
+      "language": "python",
+      "status": "modified",
+      "metrics": {
+        "lines": {
+          "total": 42,
+          "code": 36,
+          "blank": 4,
+          "comment": 2
+        },
+        "functions": 0,
+        "classes": 0,
+        "avg_complexity": 0.0
+      },
+      "quality_score": 100,
+      "grade": "A",
+      "smells": [],
+      "solid_violations": [],
+      "function_details": [],
+      "class_details": []
+    },
+    {
+      "file": "src\\sandbox_engine\\backends.py",
+      "language": "python",
+      "status": "modified",
+      "metrics": {
+        "lines": {
+          "total": 183,
+          "code": 128,
+          "blank": 42,
+          "comment": 13
+        },
+        "functions": 28,
+        "classes": 3,
+        "avg_complexity": 1.9
+      },
+      "quality_score": 99,
+      "grade": "A",
+      "smells": [
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 300 should be a named constant",
+          "location": "line 88"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 1024 should be a named constant",
+          "location": "line 136"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 300 should be a named constant",
+          "location": "line 146"
+        }
+      ],
+      "solid_violations": [],
+      "function_details": [
+        {
+          "name": "available",
+          "parameters": 1,
+          "lines": 2,
+          "complexity": 1
+        },
+        {
+          "name": "create",
+          "parameters": 5,
+          "lines": 2,
+          "complexity": 1
+        },
+        {
+          "name": "state",
+          "parameters": 2,
+          "lines": 2,
+          "complexity": 1
+        },
+        {
+          "name": "start",
+          "parameters": 2,
+          "lines": 2,
+          "complexity": 1
+        },
+        {
+          "name": "stop",
+          "parameters": 2,
+          "lines": 2,
+          "complexity": 1
+        },
+        {
+          "name": "pause",
+          "parameters": 2,
+          "lines": 2,
+          "complexity": 1
+        },
+        {
+          "name": "unpause",
+          "parameters": 2,
+          "lines": 2,
+          "complexity": 1
+        },
+        {
+          "name": "remove",
+          "parameters": 2,
+          "lines": 9,
+          "complexity": 1
+        },
+        {
+          "name": "available",
+          "parameters": 1,
+          "lines": 4,
+          "complexity": 1
+        },
+        {
+          "name": "create",
+          "parameters": 5,
+          "lines": 4,
+          "complexity": 1
+        }
+      ],
+      "class_details": [
+        {
+          "name": "ExecutionBackend",
+          "methods": 8,
+          "lines": 16
+        },
+        {
+          "name": "NullBackend",
+          "methods": 9,
+          "lines": 45
+        },
+        {
+          "name": "PodmanBackend",
+          "methods": 11,
+          "lines": 91
+        }
+      ]
+    },
+    {
+      "file": "src\\sandbox_engine\\vm_manager.py",
+      "language": "python",
+      "status": "modified",
+      "metrics": {
+        "lines": {
+          "total": 354,
+          "code": 254,
+          "blank": 61,
+          "comment": 39
+        },
+        "functions": 20,
+        "classes": 4,
+        "avg_complexity": 4.3
+      },
+      "quality_score": 100,
+      "grade": "A",
+      "smells": [],
+      "solid_violations": [],
+      "function_details": [
+        {
+          "name": "can_transition",
+          "parameters": 2,
+          "lines": 6,
+          "complexity": 3
+        },
+        {
+          "name": "state_from_str",
+          "parameters": 1,
+          "lines": 38,
+          "complexity": 3
+        },
+        {
+          "name": "__str__",
+          "parameters": 1,
+          "lines": 13,
+          "complexity": 1
+        },
+        {
+          "name": "__init__",
+          "parameters": 2,
+          "lines": 6,
+          "complexity": 3
+        },
+        {
+          "name": "runtime",
+          "parameters": 1,
+          "lines": 4,
+          "complexity": 1
+        },
+        {
+          "name": "create_sandbox",
+          "parameters": 3,
+          "lines": 30,
+          "complexity": 3
+        },
+        {
+          "name": "_backend_op",
+          "parameters": 3,
+          "lines": 19,
+          "complexity": 6
+        },
+        {
+          "name": "_start_backend",
+          "parameters": 2,
+          "lines": 14,
+          "complexity": 5
+        },
+        {
+          "name": "_stop_backend",
+          "parameters": 2,
+          "lines": 10,
+          "complexity": 6
+        },
+        {
+          "name": "start_sandbox",
+          "parameters": 2,
+          "lines": 13,
+          "complexity": 6
+        }
+      ],
+      "class_details": [
+        {
+          "name": "SandboxState",
+          "methods": 2,
+          "lines": 51
+        },
+        {
+          "name": "class",
+          "methods": 0,
+          "lines": 19
+        },
+        {
+          "name": "class",
+          "methods": 1,
+          "lines": 14
+        },
+        {
+          "name": "SandboxLifecycleManager",
+          "methods": 17,
+          "lines": 251
+        }
+      ]
+    },
+    {
+      "file": "tests\\test_sandbox_api.py",
+      "language": "python",
+      "status": "modified",
+      "metrics": {
+        "lines": {
+          "total": 533,
+          "code": 327,
+          "blank": 151,
+          "comment": 55
+        },
+        "functions": 25,
+        "classes": 1,
+        "avg_complexity": 1.4
+      },
+      "quality_score": 0,
+      "grade": "F",
+      "smells": [
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 201 should be a named constant",
+          "location": "line 36"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 123 should be a named constant",
+          "location": "line 46"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 201 should be a named constant",
+          "location": "line 49"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 123 should be a named constant",
+          "location": "line 52"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 400 should be a named constant",
+          "location": "line 58"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 123 should be a named constant",
+          "location": "line 68"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 400 should be a named constant",
+          "location": "line 71"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 456 should be a named constant",
+          "location": "line 87"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 94"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 404 should be a named constant",
+          "location": "line 102"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 404 should be a named constant",
+          "location": "line 112"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 789 should be a named constant",
+          "location": "line 128"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 135"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 158"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 181"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 186"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 204"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 209"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 214"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 221"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 200 should be a named constant",
+          "location": "line 229"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 201 should be a named constant",
+          "location": "line 249"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 254"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 258"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 262"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 266"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 281"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 409 should be a named constant",
+          "location": "line 288"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 297"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 409 should be a named constant",
+          "location": "line 300"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 409 should be a named constant",
+          "location": "line 305"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 314"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 315"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 409 should be a named constant",
+          "location": "line 318"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 404 should be a named constant",
+          "location": "line 323"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 332"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 404 should be a named constant",
+          "location": "line 334"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 404 should be a named constant",
+          "location": "line 335"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 404 should be a named constant",
+          "location": "line 336"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 201 should be a named constant",
+          "location": "line 372"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 406"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 411"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 417"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 423"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 428"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 430"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 434"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 435"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 404 should be a named constant",
+          "location": "line 437"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 409 should be a named constant",
+          "location": "line 450"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 502 should be a named constant",
+          "location": "line 473"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 478"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 404 should be a named constant",
+          "location": "line 479"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 502 should be a named constant",
+          "location": "line 485"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 494"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 495"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 502 should be a named constant",
+          "location": "line 499"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 204 should be a named constant",
+          "location": "line 504"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 400 should be a named constant",
+          "location": "line 518"
+        }
+      ],
+      "solid_violations": [],
+      "function_details": [
+        {
+          "name": "_create_client",
+          "parameters": 0,
+          "lines": 11,
+          "complexity": 1
+        },
+        {
+          "name": "test_create_sandbox_success",
+          "parameters": 0,
+          "lines": 23,
+          "complexity": 2
+        },
+        {
+          "name": "test_create_sandbox_invalid_stack",
+          "parameters": 0,
+          "lines": 19,
+          "complexity": 1
+        },
+        {
+          "name": "test_get_sandbox_status_success",
+          "parameters": 0,
+          "lines": 27,
+          "complexity": 1
+        },
+        {
+          "name": "test_get_sandbox_not_found",
+          "parameters": 0,
+          "lines": 16,
+          "complexity": 2
+        },
+        {
+          "name": "test_stop_sandbox",
+          "parameters": 0,
+          "lines": 24,
+          "complexity": 1
+        },
+        {
+          "name": "test_suspend_sandbox",
+          "parameters": 0,
+          "lines": 24,
+          "complexity": 1
+        },
+        {
+          "name": "test_resume_sandbox",
+          "parameters": 0,
+          "lines": 24,
+          "complexity": 1
+        },
+        {
+          "name": "test_delete_sandbox",
+          "parameters": 0,
+          "lines": 24,
+          "complexity": 2
+        },
+        {
+          "name": "test_health_live",
+          "parameters": 0,
+          "lines": 13,
+          "complexity": 1
+        }
+      ],
+      "class_details": [
+        {
+          "name": "FailingCreate",
+          "methods": 4,
+          "lines": 80
+        }
+      ]
+    },
+    {
+      "file": "tests\\test_sandbox_backends.py",
+      "language": "python",
+      "status": "modified",
+      "metrics": {
+        "lines": {
+          "total": 315,
+          "code": 198,
+          "blank": 84,
+          "comment": 33
+        },
+        "functions": 24,
+        "classes": 1,
+        "avg_complexity": 2.2
+      },
+      "quality_score": 95,
+      "grade": "A",
+      "smells": [
+        {
+          "type": "high_complexity",
+          "severity": "medium",
+          "message": "Function 'test_manager_with_fake_podman' has complexity 15 (max: 10)",
+          "location": "test_manager_with_fake_podman"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 125 should be a named constant",
+          "location": "line 99"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 12345678 should be a named constant",
+          "location": "line 221"
+        },
+        {
+          "type": "magic_number",
+          "severity": "low",
+          "message": "Magic number 87654321 should be a named constant",
+          "location": "line 265"
+        }
+      ],
+      "solid_violations": [
+        {
+          "principle": "OCP",
+          "name": "Open/Closed Principle",
+          "severity": "medium",
+          "message": "Found 5 type checks - consider using polymorphism"
+        }
+      ],
+      "function_details": [
+        {
+          "name": "test_null_backend_selection",
+          "parameters": 1,
+          "lines": 6,
+          "complexity": 1
+        },
+        {
+          "name": "test_forced_podman_falls_back_to_null_when_missing",
+          "parameters": 1,
+          "lines": 9,
+          "complexity": 1
+        },
+        {
+          "name": "test_podman_selected_when_present",
+          "parameters": 1,
+          "lines": 7,
+          "complexity": 1
+        },
+        {
+          "name": "test_runsc_selected_requires_both",
+          "parameters": 1,
+          "lines": 4,
+          "complexity": 1
+        },
+        {
+          "name": "which",
+          "parameters": 1,
+          "lines": 8,
+          "complexity": 3
+        },
+        {
+          "name": "test_auto_defaults_to_null_without_podman",
+          "parameters": 1,
+          "lines": 9,
+          "complexity": 1
+        },
+        {
+          "name": "test_podman_create_argv_includes_limits_and_isolation",
+          "parameters": 1,
+          "lines": 6,
+          "complexity": 1
+        },
+        {
+          "name": "fake_run",
+          "parameters": 2,
+          "lines": 18,
+          "complexity": 5
+        },
+        {
+          "name": "test_podman_runsc_flag",
+          "parameters": 0,
+          "lines": 7,
+          "complexity": 1
+        },
+        {
+          "name": "test_podman_nonzero_exit_reports_failure",
+          "parameters": 1,
+          "lines": 4,
+          "complexity": 1
+        }
+      ],
+      "class_details": [
+        {
+          "name": "FailingBackend",
+          "methods": 8,
+          "lines": 130
+        }
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "severity": "medium",
+      "type": "high_complexity",
+      "message": "Function '__call__' has complexity 14 (max: 10)",
+      "file": "src\\api\\auth\\route_guard.py",
+      "line": 0
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 401 should be a named constant",
+      "file": "src\\api\\auth\\route_guard.py",
+      "line": 97
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 125 should be a named constant",
+      "file": "tests\\fake_backends.py",
+      "line": 6
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 125 should be a named constant",
+      "file": "tests\\fake_backends.py",
+      "line": 31
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 63
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 201 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 70
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 201 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 71
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 401 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 81
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 401 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 82
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 401 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 83
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 401 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 84
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 401 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 95
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 201 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 102
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 106
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 112
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 122
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 123
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 124
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 125
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 126
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 201 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 136
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 403 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 138
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 201 should be a named constant",
+      "file": "tests\\test_route_guard.py",
+      "line": 147
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 8081 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 8
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 9090 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 9
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 8001 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 20
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 600 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 78
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 100 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 82
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 700 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 96
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 600 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 103
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 100 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 105
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 100 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 106
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 5000 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 139
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 1024 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 142
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 1024 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 143
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 1024 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 144
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 1024 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 145
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 600 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 190
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 100 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 191
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 248
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 502 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 253
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 404 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 257
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 266
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 8081 should be a named constant",
+      "file": "dap_dashboard.py",
+      "line": 279
+    },
+    {
+      "severity": "medium",
+      "type": "long_function",
+      "message": "Function 'check_permission' has 54 lines (max: 50)",
+      "file": "src\\api\\auth\\main.py",
+      "line": 0
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 128 should be a named constant",
+      "file": "src\\api\\auth\\main.py",
+      "line": 66
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 401 should be a named constant",
+      "file": "src\\api\\auth\\main.py",
+      "line": 202
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 401 should be a named constant",
+      "file": "src\\api\\auth\\main.py",
+      "line": 267
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 123 should be a named constant",
+      "file": "src\\api\\auth\\main.py",
+      "line": 276
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 456 should be a named constant",
+      "file": "src\\api\\auth\\main.py",
+      "line": 280
+    },
+    {
+      "severity": "medium",
+      "type": "long_function",
+      "message": "Function 'create_sandbox' has 74 lines (max: 50)",
+      "file": "src\\api\\sandbox\\main.py",
+      "line": 0
+    },
+    {
+      "severity": "medium",
+      "type": "high_complexity",
+      "message": "Function 'create_sandbox' has complexity 12 (max: 10)",
+      "file": "src\\api\\sandbox\\main.py",
+      "line": 0
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 404 should be a named constant",
+      "file": "src\\api\\sandbox\\main.py",
+      "line": 109
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 502 should be a named constant",
+      "file": "src\\api\\sandbox\\main.py",
+      "line": 261
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 5432 should be a named constant",
+      "file": "src\\database\\__init__.py",
+      "line": 44
+    },
+    {
+      "severity": "low",
+      "type": "commented_code",
+      "message": "Commented-out code should be removed",
+      "file": "src\\database\\__init__.py",
+      "line": 39
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 128 should be a named constant",
+      "file": "src\\database\\models.py",
+      "line": 79
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 255 should be a named constant",
+      "file": "src\\database\\models.py",
+      "line": 129
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 255 should be a named constant",
+      "file": "src\\database\\models.py",
+      "line": 130
+    },
+    {
+      "severity": "medium",
+      "type": "long_function",
+      "message": "Function 'lifespan' has 75 lines (max: 50)",
+      "file": "src\\main.py",
+      "line": 0
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 8000 should be a named constant",
+      "file": "src\\main.py",
+      "line": 6
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 8080 should be a named constant",
+      "file": "src\\main.py",
+      "line": 173
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 404 should be a named constant",
+      "file": "src\\main.py",
+      "line": 202
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 365 should be a named constant",
+      "file": "src\\main.py",
+      "line": 310
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 300 should be a named constant",
+      "file": "src\\sandbox_engine\\backends.py",
+      "line": 88
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 1024 should be a named constant",
+      "file": "src\\sandbox_engine\\backends.py",
+      "line": 136
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 300 should be a named constant",
+      "file": "src\\sandbox_engine\\backends.py",
+      "line": 146
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 201 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 36
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 123 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 46
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 201 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 49
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 123 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 52
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 400 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 58
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 123 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 68
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 400 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 71
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 456 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 87
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 94
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 404 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 102
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 404 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 112
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 789 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 128
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 135
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 158
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 181
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 186
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 204
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 209
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 214
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 221
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 200 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 229
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 201 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 249
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 254
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 258
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 262
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 266
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 281
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 409 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 288
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 297
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 409 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 300
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 409 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 305
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 314
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 315
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 409 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 318
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 404 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 323
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 332
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 404 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 334
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 404 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 335
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 404 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 336
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 201 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 372
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 406
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 411
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 417
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 423
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 428
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 430
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 434
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 435
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 404 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 437
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 409 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 450
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 502 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 473
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 478
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 404 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 479
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 502 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 485
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 494
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 495
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 502 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 499
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 204 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 504
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 400 should be a named constant",
+      "file": "tests\\test_sandbox_api.py",
+      "line": 518
+    },
+    {
+      "severity": "medium",
+      "type": "high_complexity",
+      "message": "Function 'test_manager_with_fake_podman' has complexity 15 (max: 10)",
+      "file": "tests\\test_sandbox_backends.py",
+      "line": 0
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 125 should be a named constant",
+      "file": "tests\\test_sandbox_backends.py",
+      "line": 99
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 12345678 should be a named constant",
+      "file": "tests\\test_sandbox_backends.py",
+      "line": 221
+    },
+    {
+      "severity": "low",
+      "type": "magic_number",
+      "message": "Magic number 87654321 should be a named constant",
+      "file": "tests\\test_sandbox_backends.py",
+      "line": 265
+    },
+    {
+      "severity": "medium",
+      "type": "OCP",
+      "message": "Found 5 type checks - consider using polymorphism",
+      "file": "tests\\test_sandbox_backends.py",
+      "line": 0
+    }
+  ]
+}

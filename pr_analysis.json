@@ -1,0 +1,548 @@
+{
+  "status": "analyzed",
+  "summary": {
+    "files_changed": 51,
+    "total_additions": 3609,
+    "total_deletions": 61,
+    "complexity_score": 8,
+    "complexity_label": "Very Complex",
+    "commits": 1
+  },
+  "risks": {
+    "critical": [
+      {
+        "name": "hardcoded_secrets",
+        "severity": "critical",
+        "message": "Potential hardcoded secret or connection string detected",
+        "file": "tests/test_route_guard.py",
+        "count": 1
+      }
+    ],
+    "high": [
+      {
+        "name": "debugger",
+        "severity": "high",
+        "message": "Debugger statement found",
+        "file": ".vault/snapshots/2026-08-24-1915/api_sandbox/__init__.py",
+        "count": 1
+      }
+    ],
+    "medium": [
+      {
+        "name": "loose_type",
+        "severity": "medium",
+        "message": "Loose type used (TypeScript 'any' or C# 'dynamic')",
+        "file": ".vault/SOLUTIONS.md",
+        "count": 1
+      }
+    ],
+    "low": []
+  },
+  "files": [
+    {
+      "path": "src/api/auth/main.py",
+      "status": "modified",
+      "category": "critical",
+      "priority_weight": 5,
+      "additions": 12,
+      "deletions": 1,
+      "risks": []
+    },
+    {
+      "path": "src/api/auth/route_guard.py",
+      "status": "added",
+      "category": "critical",
+      "priority_weight": 5,
+      "additions": 116,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/api_sandbox/__init__.py",
+      "status": "added",
+      "category": "high",
+      "priority_weight": 4,
+      "additions": 26,
+      "deletions": 0,
+      "risks": [
+        {
+          "name": "debugger",
+          "severity": "high",
+          "message": "Debugger statement found",
+          "file": ".vault/snapshots/2026-08-24-1915/api_sandbox/__init__.py",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/api_sandbox/main.py",
+      "status": "added",
+      "category": "high",
+      "priority_weight": 4,
+      "additions": 307,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/api_sandbox/stacks.py",
+      "status": "added",
+      "category": "high",
+      "priority_weight": 4,
+      "additions": 22,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": "src/api/sandbox/main.py",
+      "status": "modified",
+      "category": "high",
+      "priority_weight": 4,
+      "additions": 100,
+      "deletions": 12,
+      "risks": []
+    },
+    {
+      "path": "src/database/__init__.py",
+      "status": "modified",
+      "category": "high",
+      "priority_weight": 4,
+      "additions": 18,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": "src/database/models.py",
+      "status": "modified",
+      "category": "high",
+      "priority_weight": 4,
+      "additions": 2,
+      "deletions": 1,
+      "risks": []
+    },
+    {
+      "path": "src/database/sandbox_repo.py",
+      "status": "modified",
+      "category": "high",
+      "priority_weight": 4,
+      "additions": 12,
+      "deletions": 3,
+      "risks": []
+    },
+    {
+      "path": "tests/test_sandbox_api.py",
+      "status": "modified",
+      "category": "high",
+      "priority_weight": 4,
+      "additions": 196,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/sandbox_engine/__init__.py",
+      "status": "added",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 39,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/sandbox_engine/backends.py",
+      "status": "added",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 180,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/sandbox_engine/vm_manager.py",
+      "status": "added",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 297,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/templates_docker/Caddyfile",
+      "status": "added",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 26,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/templates_docker/DOCKERCOMPOSE_FULL.yml",
+      "status": "added",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 128,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/templates_docker/DOCKERCOMPOSE_PROD.yml",
+      "status": "added",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 92,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/templates_docker/Dockerfile",
+      "status": "added",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 36,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/templates_docker/Dockerfile.template",
+      "status": "added",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 36,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-25-deploy-prep/dap_dashboard.py",
+      "status": "added",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 290,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-25-deploy-prep/templates_docker/Caddyfile",
+      "status": "added",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 26,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-25-deploy-prep/templates_docker/DOCKERCOMPOSE_PROD.yml",
+      "status": "added",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 92,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-25-deploy-prep/templates_docker/Dockerfile",
+      "status": "added",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 36,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": "dap_dashboard.py",
+      "status": "modified",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 17,
+      "deletions": 5,
+      "risks": []
+    },
+    {
+      "path": "dev-scripts/live_verify_sandbox.sh",
+      "status": "added",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 231,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": "src/main.py",
+      "status": "modified",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 8,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": "src/sandbox_engine/__init__.py",
+      "status": "modified",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 2,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": "src/sandbox_engine/backends.py",
+      "status": "modified",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 3,
+      "deletions": 1,
+      "risks": []
+    },
+    {
+      "path": "src/sandbox_engine/vm_manager.py",
+      "status": "modified",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 66,
+      "deletions": 10,
+      "risks": []
+    },
+    {
+      "path": "templates/docker/Caddyfile",
+      "status": "modified",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 3,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": "templates/docker/DOCKERCOMPOSE_PROD.yml",
+      "status": "modified",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 37,
+      "deletions": 8,
+      "risks": []
+    },
+    {
+      "path": "templates/docker/Dockerfile",
+      "status": "modified",
+      "category": "medium",
+      "priority_weight": 2,
+      "additions": 3,
+      "deletions": 1,
+      "risks": []
+    },
+    {
+      "path": ".vault/SNAPSHOT_LOG.md",
+      "status": "modified",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 27,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/SOLUTIONS.md",
+      "status": "modified",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 137,
+      "deletions": 0,
+      "risks": [
+        {
+          "name": "loose_type",
+          "severity": "medium",
+          "message": "Loose type used (TypeScript 'any' or C# 'dynamic')",
+          "file": ".vault/SOLUTIONS.md",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": ".vault/VAULT_OVERVIEW.md",
+      "status": "modified",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 5,
+      "deletions": 5,
+      "risks": []
+    },
+    {
+      "path": ".vault/metrics/2026-08-25-test-report.md",
+      "status": "added",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 27,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/AGENTS.md",
+      "status": "added",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 0,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/HANDOFF.md",
+      "status": "added",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 158,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/docs/DEPLOYMENT_GUIDE.md",
+      "status": "added",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 119,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-24-1915/tests/conftest.py",
+      "status": "added",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 13,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-25-deploy-prep/AGENTS.md",
+      "status": "added",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 0,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-25-deploy-prep/HANDOFF.md",
+      "status": "added",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 158,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-25-deploy-prep/docs/DEPLOYMENT_GUIDE.md",
+      "status": "added",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 119,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-25-deploy-prep/vault/SNAPSHOT_LOG.md",
+      "status": "added",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 0,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-25-deploy-prep/vault/SOLUTIONS.md",
+      "status": "added",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 0,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": ".vault/snapshots/2026-08-25-deploy-prep/vault/VAULT_OVERVIEW.md",
+      "status": "added",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 0,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": "AGENTS.md",
+      "status": "modified",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 0,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": "HANDOFF.md",
+      "status": "modified",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 0,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": "docs/DEPLOYMENT_GUIDE.md",
+      "status": "modified",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 52,
+      "deletions": 14,
+      "risks": []
+    },
+    {
+      "path": "tests/fake_backends.py",
+      "status": "added",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 92,
+      "deletions": 0,
+      "risks": []
+    },
+    {
+      "path": "tests/test_route_guard.py",
+      "status": "added",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 147,
+      "deletions": 0,
+      "risks": [
+        {
+          "name": "hardcoded_secrets",
+          "severity": "critical",
+          "message": "Potential hardcoded secret or connection string detected",
+          "file": "tests/test_route_guard.py",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "tests/test_sandbox_backends.py",
+      "status": "modified",
+      "category": "low",
+      "priority_weight": 1,
+      "additions": 96,
+      "deletions": 0,
+      "risks": []
+    }
+  ],
+  "commit_issues": [
+    {
+      "commit": "a1f2a8c",
+      "issue": "Does not follow conventional commit format"
+    },
+    {
+      "commit": "a1f2a8c",
+      "issue": "Commit message exceeds 72 characters"
+    }
+  ],
+  "review_order": [
+    "src/api/auth/main.py",
+    "src/api/auth/route_guard.py",
+    ".vault/snapshots/2026-08-24-1915/api_sandbox/__init__.py",
+    ".vault/snapshots/2026-08-24-1915/api_sandbox/main.py",
+    ".vault/snapshots/2026-08-24-1915/api_sandbox/stacks.py",
+    "src/api/sandbox/main.py",
+    "src/database/__init__.py",
+    "src/database/models.py",
+    "src/database/sandbox_repo.py",
+    "tests/test_sandbox_api.py"
+  ]
+}
